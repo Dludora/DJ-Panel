@@ -1,0 +1,43 @@
+{
+  "eventTime": "2026-04-23T12:06:00Z",
+  "producer": "https://example.com/dj-panel",
+  "schemaURL": "https://openlineage.io/spec/2-0-2/OpenLineage.json#/$defs/JobEvent",
+  "job": {
+    "namespace": "demo",
+    "name": "declared_train_model",
+    "facets": {
+      "jobType": {
+        "processingType": "BATCH"
+      },
+      "documentation": {
+        "description": "Static job metadata for training"
+      }
+    }
+  },
+  "inputs": [
+    {
+      "namespace": "demo",
+      "name": "feature_store_snapshot",
+      "facets": {
+        "schema": {
+          "fields": [
+            {"name": "id", "type": "STRING"},
+            {"name": "feature", "type": "DOUBLE"}
+          ]
+        }
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "namespace": "demo",
+      "name": "registered_model",
+      "facets": {
+        "mlflow_model": {
+          "artifact_type": "model",
+          "registry_stage": "production"
+        }
+      }
+    }
+  ]
+}

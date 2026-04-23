@@ -1,0 +1,76 @@
+{
+  "schemaURL": "https://openlineage.io/spec/1-0-5/OpenLineage.json#/definitions/RunEvent",
+  "eventType": "COMPLETE",
+  "eventTime": "2026-04-23T12:05:00Z",
+  "producer": "https://example.com/dj-panel-tests",
+  "run": {
+    "runId": "run-001",
+    "facets": {
+      "datajuicer_run": {
+        "phase": "complete",
+        "executor": "local"
+      },
+      "execution_parameters": {
+        "parameters": {
+          "lr": 0.001,
+          "epochs": 2
+        }
+      }
+    }
+  },
+  "job": {
+    "namespace": "demo",
+    "name": "train_model",
+    "facets": {
+      "jobType": {
+        "processingType": "BATCH"
+      },
+      "datajuicer": {
+        "recipe": "train_recipe",
+        "project": "demo_project"
+      }
+    }
+  },
+  "inputs": [
+    {
+      "namespace": "demo",
+      "name": "training_dataset",
+      "facets": {
+        "schema": {
+          "fields": [
+            {"name": "id", "type": "string"},
+            {"name": "feature", "type": "double"}
+          ]
+        }
+      },
+      "inputFacets": {
+        "dataQuality": {
+          "rowCount": 100
+        }
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "namespace": "demo",
+      "name": "model_artifact",
+      "facets": {
+        "schema": {
+          "fields": [
+            {"name": "artifact_path", "type": "string"},
+            {"name": "registry_stage", "type": "string"}
+          ]
+        },
+        "mlflow_model": {
+          "artifact_type": "model",
+          "registry_stage": "staging"
+        }
+      },
+      "outputFacets": {
+        "outputStatistics": {
+          "rowCount": 1
+        }
+      }
+    }
+  ]
+}

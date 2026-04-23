@@ -1,0 +1,20 @@
+{
+  "eventTime": "2026-04-23T12:05:00Z",
+  "producer": "https://example.com/dj-panel",
+  "schemaURL": "https://openlineage.io/spec/2-0-2/OpenLineage.json#/$defs/DatasetEvent",
+  "dataset": {
+    "namespace": "demo",
+    "name": "feature_store_snapshot",
+    "facets": {
+      "schema": {
+        "fields": [
+          {"name": "id", "type": "STRING"},
+          {"name": "feature", "type": "DOUBLE"}
+        ]
+      },
+      "documentation": {
+        "description": "Static dataset metadata for a feature snapshot"
+      }
+    }
+  }
+}

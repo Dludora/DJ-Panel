@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dj-lineage-backend"
+version = "0.1.0"
+description = "Sustainable Python lineage backend scaffold for DJ Panel"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Apache-2.0"}
+authors = [{name = "Your Team"}]
+dependencies = [
+  "fastapi>=0.116.0",
+  "uvicorn[standard]>=0.35.0",
+  "sqlalchemy>=2.0.40",
+  "alembic>=1.16.0",
+  "psycopg[binary]>=3.2.9",
+  "pydantic>=2.11.0",
+  "pydantic-settings>=2.10.0",
+  "orjson>=3.11.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.4.0",
+  "httpx>=0.28.0",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
