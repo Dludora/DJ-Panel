@@ -131,11 +131,13 @@ def test_facets_namespaces_and_dataset_versions_are_projected(ingestion_service,
 
     training_dataset_id = dataset_by_name['training_dataset']
     model_dataset_id = dataset_by_name['model_artifact']
+    model_dataset_row = next(row for row in dataset_rows if row['name'] == 'model_artifact')
 
     assert dataset_facets_grouped[(training_dataset_id, 'schema')]['fields'][1]['name'] == 'feature'
     assert dataset_facets_grouped[(training_dataset_id, '_input_facets')]['dataQuality']['rowCount'] == 100
     assert dataset_facets_grouped[(model_dataset_id, 'mlflow_model')]['registry_stage'] == 'staging'
     assert dataset_facets_grouped[(model_dataset_id, '_output_facets')]['outputStatistics']['rowCount'] == 1
+    assert model_dataset_row['asset_kind'] == 'MODEL'
     assert {row[0] for row in namespace_rows} == {'demo'}
     assert dataset_version_row['fields'][0]['name'] == 'artifact_path'
 

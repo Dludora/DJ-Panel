@@ -1,0 +1,2 @@
+[console_scripts]
+dj-panel-worker = tools.worker_client:main

@@ -86,6 +86,7 @@ class JobModel(ApiModel):
 class DatasetModel(ApiModel):
     id: NamespaceName
     type: str
+    asset_kind: str = Field(default='DATASET', alias='assetKind')
     name: str
     physical_name: str = Field(alias='physicalName')
     created_at: datetime = Field(alias='createdAt')
@@ -104,11 +105,13 @@ class DatasetModel(ApiModel):
 class DatasetVersionModel(ApiModel):
     id: VersionedNamespaceName
     type: str
+    asset_kind: str = Field(default='DATASET', alias='assetKind')
     created_by_run: RunModel | None = Field(alias='createdByRun')
     name: str
     physical_name: str = Field(alias='physicalName')
     created_at: datetime = Field(alias='createdAt')
     version: str
+    storage_uri: str | None = Field(default=None, alias='storageUri')
     namespace: str
     source_name: str = Field(alias='sourceName')
     fields: list[FieldModel] = Field(default_factory=list)

@@ -1,6 +1,6 @@
-__pycache__/
-*.py[cod]
-.pytest_cache/
 .venv/
-.env
-alembic.ini.bak
+.pytest_cache/
+__pycache__/
+*.pyc
+.dj_panel.db
+*.db

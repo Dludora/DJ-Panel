@@ -84,6 +84,7 @@ class DatasetRow:
     id: str
     namespace: str
     name: str
+    asset_kind: str
     created_at: datetime
     updated_at: datetime
 
@@ -93,6 +94,7 @@ class DatasetRow:
             id=row['id'],
             namespace=row['namespace'],
             name=row['name'],
+            asset_kind=row.get('asset_kind', 'DATASET'),
             created_at=row['created_at'],
             updated_at=row['updated_at'],
         )
@@ -104,6 +106,7 @@ class DatasetVersionRow:
     dataset_id: str
     version: str
     created_by_run_id: str | None
+    storage_uri: str | None
     fields: list[dict[str, Any]]
     facets: dict[str, Any]
     lifecycle_state: str | None
@@ -116,6 +119,7 @@ class DatasetVersionRow:
             dataset_id=row['dataset_id'],
             version=row['version'],
             created_by_run_id=row['created_by_run_id'],
+            storage_uri=row.get('storage_uri'),
             fields=row['fields'],
             facets=row['facets'],
             lifecycle_state=row['lifecycle_state'],

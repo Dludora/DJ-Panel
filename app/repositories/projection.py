@@ -148,18 +148,31 @@ class ProjectionRepository:
         conn.execute(insert(runs).values(**run))
         return RunRow.from_mapping(run)
 
-    def upsert_dataset(self, conn: Connection, namespace: str, name: str) -> DatasetRow:
+    def upsert_dataset(
+        self,
+        conn: Connection,
+        namespace: str,
+        name: str,
+        asset_kind: str = 'DATASET',
+    ) -> DatasetRow:
         existing = conn.execute(
             select(datasets).where(datasets.c.namespace == namespace, datasets.c.name == name)
         ).mappings().first()
         now = datetime.now(timezone.utc)
         if existing:
-            conn.execute(update(datasets).where(datasets.c.id == existing['id']).values(updated_at=now))
-            return DatasetRow.from_mapping({**dict(existing), 'updated_at': now})
+            current_kind = existing.get('asset_kind') or 'DATASET'
+            next_kind = asset_kind if current_kind == 'DATASET' and asset_kind != 'DATASET' else current_kind
+            conn.execute(
+                update(datasets)
+                .where(datasets.c.id == existing['id'])
+                .values(asset_kind=next_kind, updated_at=now)
+            )
+            return DatasetRow.from_mapping({**dict(existing), 'asset_kind': next_kind, 'updated_at': now})
         dataset = {
             'id': str(uuid4()),
             'namespace': namespace,
             'name': name,
+            'asset_kind': asset_kind,
             'created_at': now,
             'updated_at': now,
         }
@@ -189,6 +202,12 @@ class ProjectionRepository:
         if dataset.output_facets:
             payloads['_output_facets'] = dataset.output_facets
         self._upsert_facets(conn, dataset_facets, 'dataset_id', dataset_id, payloads)
+        asset_kind = self.infer_asset_kind(payloads)
+        current_kind = conn.execute(
+            select(datasets.c.asset_kind).where(datasets.c.id == dataset_id)
+        ).scalar_one_or_none() or 'DATASET'
+        next_kind = asset_kind if current_kind == 'DATASET' or asset_kind != 'DATASET' else current_kind
+        conn.execute(update(datasets).where(datasets.c.id == dataset_id).values(asset_kind=next_kind))
         return payloads
 
     def compute_version_hash(self, job: JobRow, inputs: list[DatasetRow], outputs: list[DatasetRow]) -> str:
@@ -225,6 +244,7 @@ class ProjectionRepository:
             )
         ).mappings().first()
         fields = payloads.get('schema', {}).get('fields', [])
+        storage_uri = self.extract_storage_uri(payloads)
         lifecycle_state = (
             payloads.get('lifecycleState', {}).get('lifecycleState')
             or DatasetLifecycleState.ACTIVE.value
@@ -234,13 +254,20 @@ class ProjectionRepository:
             conn.execute(
                 update(dataset_versions)
                 .where(dataset_versions.c.id == existing['id'])
-                .values(fields=fields, facets=payloads, lifecycle_state=lifecycle_state, created_at=now)
+                .values(
+                    fields=fields,
+                    facets=payloads,
+                    storage_uri=storage_uri,
+                    lifecycle_state=lifecycle_state,
+                    created_at=now,
+                )
             )
             return DatasetVersionRow.from_mapping(
                 {
                     **dict(existing),
                     'fields': fields,
                     'facets': payloads,
+                    'storage_uri': storage_uri,
                     'lifecycle_state': lifecycle_state,
                     'created_at': now,
                 }
@@ -251,6 +278,7 @@ class ProjectionRepository:
             'dataset_id': dataset.id,
             'version': version,
             'created_by_run_id': run.id,
+            'storage_uri': storage_uri,
             'fields': fields,
             'facets': payloads,
             'lifecycle_state': lifecycle_state,
@@ -258,6 +286,43 @@ class ProjectionRepository:
         }
         conn.execute(insert(dataset_versions).values(**dataset_version))
         return DatasetVersionRow.from_mapping(dataset_version)
+
+    @staticmethod
+    def infer_asset_kind(payloads: dict) -> str:
+        if not payloads:
+            return 'DATASET'
+
+        for facet_name in payloads:
+            normalized = facet_name.lower()
+            if 'mlflow_model' in normalized or normalized in {'model', 'modelversion'}:
+                return 'MODEL'
+            if 'checkpoint' in normalized:
+                return 'CHECKPOINT'
+            if 'eval' in normalized and 'report' in normalized:
+                return 'EVAL_REPORT'
+
+        for payload in payloads.values():
+            if isinstance(payload, dict):
+                values = [str(value).lower() for value in payload.values() if isinstance(value, (str, int, float, bool))]
+                joined = ' '.join(values)
+                if 'model' in joined:
+                    return 'MODEL'
+                if 'checkpoint' in joined:
+                    return 'CHECKPOINT'
+        return 'DATASET'
+
+    @staticmethod
+    def extract_storage_uri(payloads: dict) -> str | None:
+        candidates = [
+            payloads.get('dataSource', {}).get('uri'),
+            payloads.get('datasource', {}).get('uri'),
+            payloads.get('mlflow_model', {}).get('model_uri'),
+            payloads.get('mlflow_model', {}).get('artifact_uri'),
+        ]
+        for candidate in candidates:
+            if candidate:
+                return str(candidate)
+        return None
 
     def upsert_job_version(
         self,

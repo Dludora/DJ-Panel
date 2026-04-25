@@ -1,3 +1,21 @@
+Metadata-Version: 2.4
+Name: dj-panel-backend
+Version: 0.1.0
+Summary: DJ Panel backend for control-plane orchestration and lineage metadata services
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi<1.0.0,>=0.116.0
+Requires-Dist: uvicorn[standard]<1.0.0,>=0.35.0
+Requires-Dist: sqlalchemy<3.0.0,>=2.0.40
+Requires-Dist: alembic<2.0.0,>=1.16.0
+Requires-Dist: pydantic<3.0.0,>=2.11.0
+Requires-Dist: pydantic-settings<3.0.0,>=2.10.0
+Requires-Dist: httpx<1.0.0,>=0.28.0
+Requires-Dist: psycopg[binary]<4.0.0,>=3.2.9
+Provides-Extra: dev
+Requires-Dist: pytest<9.0.0,>=8.4.0; extra == "dev"
+Requires-Dist: pytest-cov<7.0.0,>=6.2.0; extra == "dev"
+
 # DJ Panel Backend
 
 Merged backend for DJ Panel, combining:
@@ -18,26 +36,6 @@ This service currently covers:
 - lineage/MLflow linkage fields on task attempts
 - lineage event ingestion
 - metadata projection for jobs, runs, datasets, versions, and facets
-
-## Planning docs
-
-The current implementation and near-term plan should be read through these canonical documents:
-
-- [TARGET_ARCHITECTURE.md](./TARGET_ARCHITECTURE.md)
-  Overall architecture direction for the internal team tool.
-- [DJ_PROCESSING_V1_DESIGN.md](./DJ_PROCESSING_V1_DESIGN.md)
-  Product and execution design for the first Data-Juicer-only version.
-- [DATABASE_SCHEMA_DRAFT.md](./DATABASE_SCHEMA_DRAFT.md)
-  Target schema direction, including unified lineage-derived asset handling for datasets and future models.
-- [V1_API_OPENAPI_STYLE.md](./V1_API_OPENAPI_STYLE.md)
-  V1 API draft written in an OpenAPI-style format.
-- [DJ_WORKER_PAYLOAD_AND_SEQUENCE.md](./DJ_WORKER_PAYLOAD_AND_SEQUENCE.md)
-  DJ worker claim payload, execution contract, and end-to-end sequence.
-
-The following older draft documents were intentionally removed to reduce overlap and keep one canonical path forward:
-
-- `BACKEND_FUNCTION_MAP.md`
-- `V1_API_DRAFT.md`
 
 ## Quick start
 
@@ -76,5 +74,7 @@ dj-panel-worker --workspace team-a --worker-id local-dev-1 --base-url http://127
 ```
 
 The first version assumes the worker already has the required script and runtime locally. The server sends command, script path, env vars, and execution spec; it does not distribute code bundles.
+
+## Functional map
 
 For a detailed breakdown of APIs, tables, flows, and current gaps, see [BACKEND_FUNCTION_MAP.md](./BACKEND_FUNCTION_MAP.md).
