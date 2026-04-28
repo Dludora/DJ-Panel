@@ -2,11 +2,15 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    database_url: str = "postgresql+psycopg:///dj_panel"
+    database_url: str = Field(
+        default="postgresql+psycopg:///dj_panel",
+        validation_alias=AliasChoices("DATABASE_URL", "DJ_PANEL_DATABASE_URL"),
+    )
     app_env: str = "dev"
     claim_lease_seconds: int = 900
 

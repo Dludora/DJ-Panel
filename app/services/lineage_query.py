@@ -6,9 +6,9 @@ from enum import Enum
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
 
-from app.db.schema import datasets, jobs
-from app.models.graph import Edge, LineageResponse, Node
-from app.models.lineage_enums import JobVersionIOType
+from app.db.schema import assets, jobs
+from app.models.api.lineage_graph import Edge, LineageResponse, Node
+from app.models.types.lineage import JobVersionIOType
 from app.repositories.lineage_query import LineageQueryRepository
 from app.repositories.metadata import MetadataRepository
 
@@ -101,9 +101,9 @@ class LineageQueryService:
                         continue
                     self._ensure_dataset_node(nodes, dataset)
                     dataset_row = conn.execute(
-                        select(datasets.c.id).where(
-                            datasets.c.namespace == current_ns,
-                            datasets.c.name == current_name,
+                        select(assets.c.id).where(
+                            assets.c.namespace == current_ns,
+                            assets.c.name == current_name,
                         )
                     ).first()
                     if not dataset_row:

@@ -1,17 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 
-from app.db.session import get_engine
-from app.models.control_plane_api_models import (
+from app.api.dependencies import get_recipe_service
+from app.api.errors import not_found
+from app.models.api.control_plane import (
     RecipeCreateRequest,
     RecipeVersionCreateRequest,
 )
-from app.services.recipe_service import RecipeService
+from app.services.recipes import RecipeService
 
 router = APIRouter(prefix="/api/v1", tags=["recipes"])
-
-
-def get_recipe_service() -> RecipeService:
-    return RecipeService(get_engine())
 
 
 @router.post(
@@ -25,9 +22,7 @@ def create_recipe(
     try:
         return service.create_recipe(workspace_slug, payload)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise not_found(str(exc)) from exc
 
 
 @router.get("/workspaces/{workspace_slug}/recipes")
@@ -38,9 +33,7 @@ def list_recipes(
     try:
         return service.list_recipes(workspace_slug)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise not_found(str(exc)) from exc
 
 
 @router.get("/recipes/{recipe_id}")
@@ -49,9 +42,7 @@ def get_recipe(
 ) -> dict:
     recipe = service.get_recipe(recipe_id)
     if not recipe:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found"
-        )
+        raise not_found("recipe not found")
     return recipe
 
 
@@ -64,9 +55,7 @@ def create_recipe_version(
     try:
         return service.create_recipe_version(recipe_id, payload)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise not_found(str(exc)) from exc
 
 
 @router.get("/recipes/{recipe_id}/versions")

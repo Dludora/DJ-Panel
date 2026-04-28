@@ -1,29 +1,37 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from enum import Enum
-from uuid import uuid4
 
 from sqlalchemy import func, insert, select
 from sqlalchemy.engine import Connection
 
 from app.db.schema import lineage_events
-from app.models.openlineage import DatasetEvent, JobEvent, OpenLineageEvent, RunEvent
+from app.models.schemas.openlineage import (
+    DatasetEvent,
+    JobEvent,
+    OpenLineageEvent,
+    RunEvent,
+)
+from app.repositories.utils import new_id, utc_now
 
 
 class StoredEventType(str, Enum):
-    DATASET = 'DATASET'
-    JOB = 'JOB'
-    UNKNOWN = 'UNKNOWN'
+    DATASET = "DATASET"
+    JOB = "JOB"
+    UNKNOWN = "UNKNOWN"
 
 
 class LineageEventRepository:
     def insert_raw_event(
         self, conn: Connection, event: OpenLineageEvent, payload: dict
     ) -> str:
-        event_id = str(uuid4())
+        event_id = new_id()
         if isinstance(event, RunEvent):
-            event_type = event.event_type.value if event.event_type is not None else StoredEventType.UNKNOWN.value
+            event_type = (
+                event.event_type.value
+                if event.event_type is not None
+                else StoredEventType.UNKNOWN.value
+            )
         elif isinstance(event, DatasetEvent):
             event_type = StoredEventType.DATASET.value
         elif isinstance(event, JobEvent):
@@ -35,9 +43,15 @@ class LineageEventRepository:
             insert(lineage_events).values(
                 id=event_id,
                 event_type=event_type,
-                event_time=event.event_time or datetime.now(timezone.utc),
-                job_namespace=event.job.namespace if isinstance(event, (RunEvent, JobEvent)) else None,
-                job_name=event.job.name if isinstance(event, (RunEvent, JobEvent)) else None,
+                event_time=event.event_time or utc_now(),
+                job_namespace=(
+                    event.job.namespace
+                    if isinstance(event, (RunEvent, JobEvent))
+                    else None
+                ),
+                job_name=(
+                    event.job.name if isinstance(event, (RunEvent, JobEvent)) else None
+                ),
                 run_id=event.run.run_id if isinstance(event, RunEvent) else None,
                 producer=event.producer,
                 payload=payload,
@@ -58,4 +72,4 @@ class LineageEventRepository:
         total_count = conn.execute(
             select(func.count()).select_from(lineage_events)
         ).scalar_one()
-        return [row['payload'] for row in rows], total_count
+        return [row["payload"] for row in rows], total_count

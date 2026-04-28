@@ -1,0 +1,173 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from cli import (
+    DEFAULT_DJ_COMMAND,
+    _load_json_arg,
+    _load_recipe_body,
+    _normalize_base_url,
+    _recipe_payload,
+    _render_config,
+    _render_recipe_list,
+)
+
+
+def test_load_recipe_body_requires_yaml_mapping(tmp_path: Path) -> None:
+    recipe_path = tmp_path / 'bad.yaml'
+    recipe_path.write_text('- one\n- two\n', encoding='utf-8')
+
+    with pytest.raises(ValueError, match='YAML mapping'):
+        _load_recipe_body(recipe_path)
+
+
+def test_recipe_payload_defaults_to_datajuicer_task(tmp_path: Path) -> None:
+    recipe_path = tmp_path / 'cleaning.yaml'
+    recipe_path.write_text(
+        'project_name: sft-cleaning\n'
+        'dataset_path: /data/raw.jsonl\n'
+        'export_path: /data/clean.jsonl\n',
+        encoding='utf-8',
+    )
+
+    payload = _recipe_payload(
+        file=recipe_path,
+        name=None,
+        description='clean data',
+        owner='alice',
+        recipe_command_line=DEFAULT_DJ_COMMAND,
+        timeout_seconds=7200,
+        extra_execution_spec=None,
+    )
+
+    assert payload['name'] == 'sft-cleaning'
+    assert payload['ownerName'] == 'alice'
+    assert payload['command'] == 'dj-process --config recipe.yaml'
+    assert payload['scriptPath'] == str(recipe_path.resolve())
+    assert payload['executionSpec']['taskKind'] == 'dj_recipe'
+    assert payload['executionSpec']['configMode'] == 'materialize_local_config'
+
+
+def test_load_json_arg_accepts_inline_json_and_file(tmp_path: Path) -> None:
+    assert _load_json_arg('{"np": 4}') == {'np': 4}
+
+    payload_path = tmp_path / 'params.json'
+    payload_path.write_text('{"sampleSize": 10}', encoding='utf-8')
+
+    assert _load_json_arg(str(payload_path)) == {'sampleSize': 10}
+
+
+def test_normalize_base_url_accepts_common_localhost_forms() -> None:
+    assert _normalize_base_url('http:localhost:8000') == 'http://localhost:8000'
+    assert _normalize_base_url('localhost:8000') == 'http://localhost:8000'
+    assert _normalize_base_url('http://127.0.0.1:8000/') == 'http://127.0.0.1:8000'
+
+
+def test_render_recipe_list_uses_table_output(capsys: pytest.CaptureFixture[str]) -> None:
+    _render_recipe_list(
+        {
+            'recipes': [
+                {
+                    'name': 'lineage_base',
+                    'ownerName': 'alice',
+                    'createdAt': '2026-04-26T10:00:00Z',
+                    'currentVersion': {
+                        'versionNumber': 2,
+                    },
+                }
+            ]
+        }
+    )
+
+    output = capsys.readouterr().out
+    assert 'RECIPE' in output
+    assert 'lineage_base' in output
+
+
+def test_emit_config_show_uses_human_readable_output(capsys: pytest.CaptureFixture[str]) -> None:
+    _render_config({'workspace': 'llm-team', 'user': 'alice', 'base_url': 'http://127.0.0.1:8000'})
+
+    output = capsys.readouterr().out
+    assert 'Workspace' in output
+    assert 'llm-team' in output
+    assert 'alice' in output
+
+
+def test_run_submit_help_is_available(capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+    from cli import main
+
+    monkeypatch.setattr('sys.argv', ['dj-panel', 'run', 'submit', '--help'])
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert exc.value.code == 0
+    output = capsys.readouterr().out
+    assert '--recipe' in output
+    assert '--recipe-version-id' in output
+    assert '--parameters' in output
+
+
+def test_recipe_list_and_show_help_are_available(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from cli import main
+
+    monkeypatch.setattr('sys.argv', ['dj-panel', 'recipe', 'list', '--help'])
+    with pytest.raises(SystemExit) as list_exc:
+        main()
+    assert list_exc.value.code == 0
+    assert '--workspace' in capsys.readouterr().out
+
+    monkeypatch.setattr('sys.argv', ['dj-panel', 'recipe', 'show', '--help'])
+    with pytest.raises(SystemExit) as show_exc:
+        main()
+    assert show_exc.value.code == 0
+    show_output = capsys.readouterr().out
+    assert '--recipe-id' in show_output
+    assert '--recipe' in show_output
+
+
+def test_workspace_cli_help_exposes_member_commands(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from cli import main
+
+    monkeypatch.setattr('sys.argv', ['dj-panel', 'workspace', 'members', '--help'])
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert exc.value.code == 0
+    output = capsys.readouterr().out
+    assert 'add' in output
+    assert 'list' in output
+
+
+def test_config_cli_help_is_available(capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+    from cli import main
+
+    monkeypatch.setattr('sys.argv', ['dj-panel', 'config', 'set', '--help'])
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert exc.value.code == 0
+    output = capsys.readouterr().out
+    assert '--workspace' in output
+    assert '--user' in output
+    assert '--base-url' in output
+
+
+def test_web_cli_help_is_available(capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+    from cli import main
+
+    monkeypatch.setattr('sys.argv', ['dj-panel', 'web', '--help'])
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert exc.value.code == 0
+    output = capsys.readouterr().out
+    assert '--backend-url' in output
+    assert '--web-dir' in output
+    assert '--npm-bin' in output
+    assert '--install-deps' in output

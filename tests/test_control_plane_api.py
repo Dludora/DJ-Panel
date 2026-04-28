@@ -4,18 +4,20 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
-from app.api.routes.recipes import get_recipe_service
-from app.api.routes.runs import get_run_service
-from app.api.routes.tasks import get_task_service
-from app.api.routes.workers import get_worker_service
-from app.api.routes.workspaces import get_workspace_service
+from app.api.dependencies import (
+    get_recipe_service,
+    get_run_submission_service,
+    get_task_service,
+    get_worker_service,
+    get_workspace_service,
+)
 from app.db.schema import metadata
 from app.main import app
-from app.services.recipe_service import RecipeService
-from app.services.run_service import RecipeRunService
-from app.services.task_service import TaskService
-from app.services.worker_service import WorkerService
-from app.services.workspace_service import WorkspaceService
+from app.services.recipes import RecipeService
+from app.services.run_submissions import RunSubmissionService
+from app.services.tasks import TaskService
+from app.services.workers import WorkerService
+from app.services.workspaces import WorkspaceService
 
 
 def make_client() -> TestClient:
@@ -28,7 +30,7 @@ def make_client() -> TestClient:
     metadata.create_all(engine)
     app.dependency_overrides[get_workspace_service] = lambda: WorkspaceService(engine)
     app.dependency_overrides[get_recipe_service] = lambda: RecipeService(engine)
-    app.dependency_overrides[get_run_service] = lambda: RecipeRunService(engine)
+    app.dependency_overrides[get_run_submission_service] = lambda: RunSubmissionService(engine)
     app.dependency_overrides[get_worker_service] = lambda: WorkerService(engine)
     app.dependency_overrides[get_task_service] = lambda: TaskService(engine)
     client = TestClient(app)
@@ -53,16 +55,14 @@ def create_recipe(client: TestClient, workspace_slug: str, name: str = 'demo-rec
         json={
             'name': name,
             'description': 'demo recipe',
-            'owner_name': 'alice',
-            'recipe_body': {'steps': ['load', 'train']},
+            'ownerName': 'alice',
+            'recipeBody': {'steps': ['load', 'train']},
             'command': 'python run_demo.py --epochs 3',
-            'script_path': '/tmp/run_demo.py',
-            'parameter_schema': {'type': 'object'},
-            'env_template': {'DJ_ENV': 'dev'},
-            'execution_spec': {'entrypoint': 'python'},
-            'timeout_seconds': 120,
-            'lineage_namespace': 'demo',
-            'lineage_job_name': 'demo.train',
+            'scriptPath': '/tmp/run_demo.py',
+            'parameterSchema': {'type': 'object'},
+            'envTemplate': {'DJ_ENV': 'dev'},
+            'executionSpec': {'entrypoint': 'python'},
+            'timeoutSeconds': 120,
         },
     )
     response.raise_for_status()
@@ -76,7 +76,7 @@ def test_control_plane_happy_path() -> None:
         recipe = create_recipe(client, workspace['slug'])
 
         run_response = client.post(
-            f"/api/v1/workspaces/{workspace['slug']}/recipe-runs",
+            f"/api/v1/workspaces/{workspace['slug']}/run-submissions",
             json={
                 'recipeVersionId': recipe['currentVersion']['id'],
                 'requestedBy': 'manager',
@@ -84,8 +84,8 @@ def test_control_plane_happy_path() -> None:
             },
         )
         run_response.raise_for_status()
-        recipe_run = run_response.json()
-        assert recipe_run['status'] == 'PENDING'
+        run_submission = run_response.json()['submission']
+        assert run_submission['status'] == 'PENDING'
 
         worker_response = client.post(
             f"/api/v1/workspaces/{workspace['slug']}/workers/register",
@@ -109,6 +109,7 @@ def test_control_plane_happy_path() -> None:
         assert claim['task']['recipeVersion']['id'] == recipe['currentVersion']['id']
         assert claim['task']['envVars']['epochs'] == 5
         assert claim['task']['command'] == 'python run_demo.py --epochs 3'
+        assert claim['task']['taskKind'] == 'dj_recipe'
 
         second_claim = client.post(
             f"/api/v1/workspaces/{workspace['slug']}/tasks/claim",
@@ -127,7 +128,6 @@ def test_control_plane_happy_path() -> None:
                 'attemptId': attempt_id,
                 'leaseToken': lease_token,
                 'openlineageRunId': 'ol-run-1',
-                'mlflowRunId': 'mlflow-run-1',
                 'rootLineageNodeId': 'job:demo:demo.train',
             },
         )
@@ -161,24 +161,110 @@ def test_control_plane_happy_path() -> None:
                 'attemptId': attempt_id,
                 'leaseToken': lease_token,
                 'openlineageRunId': 'ol-run-1',
-                'mlflowRunId': 'mlflow-run-1',
                 'rootLineageNodeId': 'job:demo:demo.train',
             },
         )
         complete_response.raise_for_status()
         assert complete_response.json()['status'] == 'SUCCEEDED'
 
-        runs = client.get(f"/api/v1/workspaces/{workspace['slug']}/recipe-runs")
-        runs.raise_for_status()
-        assert runs.json()['runs'][0]['status'] == 'SUCCEEDED'
+        submissions = client.get(f"/api/v1/workspaces/{workspace['slug']}/run-submissions")
+        submissions.raise_for_status()
+        assert submissions.json()['submissions'][0]['status'] == 'SUCCEEDED'
 
         tasks = client.get(f"/api/v1/workspaces/{workspace['slug']}/tasks")
         tasks.raise_for_status()
-        assert tasks.json()['tasks'][0]['currentAttempt']['mlflowRunId'] == 'mlflow-run-1'
+        assert tasks.json()['tasks'][0]['currentAttempt']['openlineageRunId'] == 'ol-run-1'
 
         artifacts = client.get(f'/api/v1/task-attempts/{attempt_id}/artifacts')
         artifacts.raise_for_status()
         assert artifacts.json()['artifacts'][0]['kind'] == 'MODEL'
+    finally:
+        client.cleanup()  # type: ignore[attr-defined]
+
+
+def test_workspace_members_can_be_created_and_listed() -> None:
+    client = make_client()
+    try:
+        response = client.post(
+            '/api/v1/workspaces',
+            json={
+                'slug': 'team-members',
+                'name': 'Team Members',
+                'description': '',
+                'ownerName': 'alice',
+            },
+        )
+        response.raise_for_status()
+
+        add_response = client.post(
+            '/api/v1/workspaces/team-members/members',
+            json={'userName': 'bob', 'role': 'MAINTAINER'},
+        )
+        add_response.raise_for_status()
+        assert add_response.json()['role'] == 'MAINTAINER'
+
+        update_response = client.post(
+            '/api/v1/workspaces/team-members/members',
+            json={'userName': 'bob', 'role': 'MEMBER'},
+        )
+        update_response.raise_for_status()
+        assert update_response.json()['role'] == 'MEMBER'
+
+        list_response = client.get('/api/v1/workspaces/team-members/members')
+        list_response.raise_for_status()
+        members = list_response.json()['members']
+        assert {member['userName']: member['role'] for member in members} == {
+            'alice': 'OWNER',
+            'bob': 'MEMBER',
+        }
+    finally:
+        client.cleanup()  # type: ignore[attr-defined]
+
+
+def test_recipe_version_create_accepts_camel_case_payload() -> None:
+    client = make_client()
+    try:
+        create_workspace(client, 'team-a')
+        recipe = create_recipe(client, 'team-a', 'camel-recipe')
+
+        response = client.post(
+            f"/api/v1/recipes/{recipe['id']}/versions",
+            json={
+                'createdBy': 'alice',
+                'recipeBody': {'project_name': 'camel-recipe-v2'},
+                'command': 'dj-process --config recipe.yaml',
+                'scriptPath': '/tmp/recipe.yaml',
+                'parameterSchema': {},
+                'envTemplate': {},
+                'executionSpec': {'taskKind': 'dj_recipe'},
+                'timeoutSeconds': 7200,
+            },
+        )
+        response.raise_for_status()
+        version = response.json()
+        assert version['versionNumber'] == 2
+        assert version['scriptPath'] == '/tmp/recipe.yaml'
+        assert version['createdBy'] == 'alice'
+    finally:
+        client.cleanup()  # type: ignore[attr-defined]
+
+
+def test_recipe_create_rejects_snake_case_payload() -> None:
+    client = make_client()
+    try:
+        create_workspace(client, 'team-a')
+        response = client.post(
+            '/api/v1/workspaces/team-a/recipes',
+            json={
+                'name': 'snake-recipe',
+                'description': 'should fail',
+                'owner_name': 'alice',
+                'recipe_body': {'project_name': 'snake-recipe'},
+                'command': 'dj-process --config recipe.yaml',
+                'script_path': '/tmp/recipe.yaml',
+            },
+        )
+        assert response.status_code == 422
     finally:
         client.cleanup()  # type: ignore[attr-defined]
 
@@ -190,7 +276,7 @@ def test_workspace_isolation_for_claims() -> None:
         create_workspace(client, 'team-b')
         recipe = create_recipe(client, 'team-a', 'team-a-recipe')
         client.post(
-            '/api/v1/workspaces/team-a/recipe-runs',
+            '/api/v1/workspaces/team-a/run-submissions',
             json={'recipeVersionId': recipe['currentVersion']['id'], 'requestedBy': 'manager', 'parameters': {}},
         ).raise_for_status()
         client.post(
@@ -217,7 +303,7 @@ def test_claim_is_single_winner() -> None:
         create_workspace(client, 'team-a')
         recipe = create_recipe(client, 'team-a', 'single-winner')
         client.post(
-            '/api/v1/workspaces/team-a/recipe-runs',
+            '/api/v1/workspaces/team-a/run-submissions',
             json={'recipeVersionId': recipe['currentVersion']['id'], 'requestedBy': 'manager', 'parameters': {}},
         ).raise_for_status()
         for worker_id in ('worker-1', 'worker-2'):
@@ -244,7 +330,7 @@ def test_claim_is_single_winner() -> None:
         client.cleanup()  # type: ignore[attr-defined]
 
 
-def test_run_submissions_alias_creates_claimable_task() -> None:
+def test_run_submissions_create_claimable_task() -> None:
     client = make_client()
     try:
         workspace = create_workspace(client, 'team-a')
@@ -281,7 +367,7 @@ def test_claim_can_filter_by_supported_task_kind() -> None:
         workspace = create_workspace(client, 'team-a')
         recipe = create_recipe(client, workspace['slug'], 'kind-filter')
         client.post(
-            f"/api/v1/workspaces/{workspace['slug']}/recipe-runs",
+            f"/api/v1/workspaces/{workspace['slug']}/run-submissions",
             json={
                 'recipeVersionId': recipe['currentVersion']['id'],
                 'requestedBy': 'manager',
@@ -304,6 +390,8 @@ def test_claim_can_filter_by_supported_task_kind() -> None:
             json={'workerId': 'dj-worker', 'supportedTaskKinds': ['dj_recipe']},
         )
         response.raise_for_status()
-        assert response.json() == {'claimed': False, 'task': None}
+        claim = response.json()
+        assert claim['claimed'] is True
+        assert claim['task']['taskKind'] == 'dj_recipe'
     finally:
         client.cleanup()  # type: ignore[attr-defined]

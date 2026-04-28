@@ -20,8 +20,8 @@ from app.db.schema import (
     run_facets,
     runs,
 )
-from app.models.lineage_enums import DatasetLifecycleState, JobVersionIOType
-from app.models.openlineage import RunEventType
+from app.models.types.lineage import DatasetLifecycleState, JobVersionIOType
+from app.models.schemas.openlineage import RunEventType
 from app.services.event_resolver import parse_event
 from app.services.ingestion import IngestionService
 
@@ -106,7 +106,7 @@ def test_facets_namespaces_and_dataset_versions_are_projected(ingestion_service,
         job_facet_rows = conn.execute(select(job_facets.c.facet_name, job_facets.c.payload)).all()
         dataset_rows = conn.execute(select(datasets)).mappings().all()
         dataset_facet_rows = conn.execute(
-            select(dataset_facets.c.dataset_id, dataset_facets.c.facet_name, dataset_facets.c.payload)
+            select(dataset_facets.c.asset_id, dataset_facets.c.facet_name, dataset_facets.c.payload)
         ).all()
         namespace_rows = conn.execute(select(namespaces.c.name)).all()
         dataset_version_row = conn.execute(select(dataset_versions)).mappings().one()
@@ -157,7 +157,7 @@ def test_job_and_dataset_events_are_accepted_and_distinguished(ingestion_service
         job_rows = conn.execute(select(jobs)).mappings().all()
         run_rows = conn.execute(select(runs)).mappings().all()
         job_facet_rows = conn.execute(select(job_facets.c.facet_name, job_facets.c.payload)).all()
-        dataset_facet_rows = conn.execute(select(dataset_facets.c.dataset_id, dataset_facets.c.facet_name, dataset_facets.c.payload)).all()
+        dataset_facet_rows = conn.execute(select(dataset_facets.c.asset_id, dataset_facets.c.facet_name, dataset_facets.c.payload)).all()
 
     assert run_rows == []
     assert {row['name'] for row in dataset_rows} == {

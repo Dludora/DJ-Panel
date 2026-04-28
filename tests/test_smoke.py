@@ -1,4 +1,4 @@
-from app.models.openlineage import DatasetEvent, JobEvent, RunEvent
+from app.models.schemas.openlineage import DatasetEvent, JobEvent, RunEvent
 from app.services.event_resolver import parse_event, resolve_event_model
 
 

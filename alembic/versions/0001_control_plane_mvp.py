@@ -66,7 +66,7 @@ def upgrade() -> None:
         sa.UniqueConstraint('recipe_id', 'version_number', name='uq_recipe_versions_recipe_version_number'),
     )
     op.create_table(
-        'recipe_runs',
+        'run_submissions',
         sa.Column('id', sa.String(length=36), primary_key=True),
         sa.Column('workspace_id', sa.String(length=36), sa.ForeignKey('workspaces.id', ondelete='CASCADE'), nullable=False),
         sa.Column('recipe_id', sa.String(length=36), sa.ForeignKey('recipes.id', ondelete='CASCADE'), nullable=False),
@@ -106,7 +106,7 @@ def upgrade() -> None:
         'tasks',
         sa.Column('id', sa.String(length=36), primary_key=True),
         sa.Column('workspace_id', sa.String(length=36), sa.ForeignKey('workspaces.id', ondelete='CASCADE'), nullable=False),
-        sa.Column('recipe_run_id', sa.String(length=36), sa.ForeignKey('recipe_runs.id', ondelete='CASCADE'), nullable=False),
+        sa.Column('run_submission_id', sa.String(length=36), sa.ForeignKey('run_submissions.id', ondelete='CASCADE'), nullable=False),
         sa.Column('recipe_version_id', sa.String(length=36), sa.ForeignKey('recipe_versions.id', ondelete='RESTRICT'), nullable=False),
         sa.Column('status', sa.String(length=32), nullable=False),
         sa.Column('assigned_worker_id', sa.String(length=255), sa.ForeignKey('workers.id', ondelete='SET NULL'), nullable=True),
@@ -173,7 +173,7 @@ def downgrade() -> None:
     op.drop_table('tasks')
     op.drop_table('worker_heartbeats')
     op.drop_table('workers')
-    op.drop_table('recipe_runs')
+    op.drop_table('run_submissions')
     op.drop_table('recipe_versions')
     op.drop_table('recipes')
     op.drop_table('workspace_members')

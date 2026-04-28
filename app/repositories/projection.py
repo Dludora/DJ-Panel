@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
-from uuid import uuid4
+from datetime import datetime
 
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.engine import Connection
 
 from app.db.schema import (
-    dataset_facets,
-    dataset_versions,
-    datasets,
+    asset_facets,
+    asset_versions,
+    assets,
     job_facets,
     job_version_io_mapping,
     job_versions,
@@ -22,16 +21,17 @@ from app.db.schema import (
     run_outputs,
     runs,
 )
-from app.models.db_rows import (
-    DatasetRow,
-    DatasetVersionRow,
+from app.db.rows.lineage import (
+    AssetRow,
+    AssetVersionRow,
     JobRow,
     JobVersionRow,
     NamespaceRow,
     RunRow,
 )
-from app.models.lineage_enums import DatasetLifecycleState, JobVersionIOType
-from app.models.openlineage import DatasetRef, RunEventType
+from app.models.types.lineage import DatasetLifecycleState, JobVersionIOType
+from app.models.schemas.openlineage import DatasetRef, RunEventType
+from app.repositories.utils import new_id, utc_now
 
 
 RUN_END_STATES = frozenset({RunEventType.COMPLETE, RunEventType.FAIL, RunEventType.ABORT})
@@ -41,7 +41,7 @@ RUN_START_STATES = frozenset({RunEventType.START, RunEventType.RUNNING})
 class ProjectionRepository:
     def upsert_namespace(self, conn: Connection, name: str) -> NamespaceRow:
         existing = conn.execute(select(namespaces).where(namespaces.c.name == name)).mappings().first()
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         if existing:
             conn.execute(update(namespaces).where(namespaces.c.name == name).values(updated_at=now))
             return NamespaceRow.from_mapping({**dict(existing), 'updated_at': now})
@@ -61,7 +61,7 @@ class ProjectionRepository:
         existing = conn.execute(
             select(jobs).where(jobs.c.namespace == namespace, jobs.c.name == name)
         ).mappings().first()
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         if existing:
             conn.execute(
                 update(jobs)
@@ -77,7 +77,7 @@ class ProjectionRepository:
             )
 
         job = {
-            'id': str(uuid4()),
+            'id': new_id(),
             'namespace': namespace,
             'name': name,
             'location': location,
@@ -97,7 +97,7 @@ class ProjectionRepository:
         state: RunEventType | None,
     ) -> RunRow:
         existing = conn.execute(select(runs).where(runs.c.run_id == run_id)).mappings().first()
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         started_at = existing['started_at'] if existing else None
         ended_at = existing['ended_at'] if existing else None
 
@@ -134,7 +134,7 @@ class ProjectionRepository:
             )
 
         run = {
-            'id': str(uuid4()),
+            'id': new_id(),
             'run_id': run_id,
             'job_id': job_id,
             'event_time': event_time,
@@ -154,40 +154,40 @@ class ProjectionRepository:
         namespace: str,
         name: str,
         asset_kind: str = 'DATASET',
-    ) -> DatasetRow:
+    ) -> AssetRow:
         existing = conn.execute(
-            select(datasets).where(datasets.c.namespace == namespace, datasets.c.name == name)
+            select(assets).where(assets.c.namespace == namespace, assets.c.name == name)
         ).mappings().first()
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         if existing:
             current_kind = existing.get('asset_kind') or 'DATASET'
             next_kind = asset_kind if current_kind == 'DATASET' and asset_kind != 'DATASET' else current_kind
             conn.execute(
-                update(datasets)
-                .where(datasets.c.id == existing['id'])
+                update(assets)
+                .where(assets.c.id == existing['id'])
                 .values(asset_kind=next_kind, updated_at=now)
             )
-            return DatasetRow.from_mapping({**dict(existing), 'asset_kind': next_kind, 'updated_at': now})
+            return AssetRow.from_mapping({**dict(existing), 'asset_kind': next_kind, 'updated_at': now})
         dataset = {
-            'id': str(uuid4()),
+            'id': new_id(),
             'namespace': namespace,
             'name': name,
             'asset_kind': asset_kind,
             'created_at': now,
             'updated_at': now,
         }
-        conn.execute(insert(datasets).values(**dataset))
-        return DatasetRow.from_mapping(dataset)
+        conn.execute(insert(assets).values(**dataset))
+        return AssetRow.from_mapping(dataset)
 
     def replace_run_inputs(self, conn: Connection, run_db_id: str, dataset_ids: list[str]) -> None:
         conn.execute(delete(run_inputs).where(run_inputs.c.run_id == run_db_id))
         if dataset_ids:
-            conn.execute(insert(run_inputs), [{'run_id': run_db_id, 'dataset_id': dataset_id} for dataset_id in dataset_ids])
+            conn.execute(insert(run_inputs), [{'run_id': run_db_id, 'asset_id': dataset_id} for dataset_id in dataset_ids])
 
     def replace_run_outputs(self, conn: Connection, run_db_id: str, dataset_ids: list[str]) -> None:
         conn.execute(delete(run_outputs).where(run_outputs.c.run_id == run_db_id))
         if dataset_ids:
-            conn.execute(insert(run_outputs), [{'run_id': run_db_id, 'dataset_id': dataset_id} for dataset_id in dataset_ids])
+            conn.execute(insert(run_outputs), [{'run_id': run_db_id, 'asset_id': dataset_id} for dataset_id in dataset_ids])
 
     def upsert_job_facets(self, conn: Connection, job_id: str, facets: dict) -> None:
         self._upsert_facets(conn, job_facets, 'job_id', job_id, facets)
@@ -201,16 +201,16 @@ class ProjectionRepository:
             payloads['_input_facets'] = dataset.input_facets
         if dataset.output_facets:
             payloads['_output_facets'] = dataset.output_facets
-        self._upsert_facets(conn, dataset_facets, 'dataset_id', dataset_id, payloads)
+        self._upsert_facets(conn, asset_facets, 'asset_id', dataset_id, payloads)
         asset_kind = self.infer_asset_kind(payloads)
         current_kind = conn.execute(
-            select(datasets.c.asset_kind).where(datasets.c.id == dataset_id)
+            select(assets.c.asset_kind).where(assets.c.id == dataset_id)
         ).scalar_one_or_none() or 'DATASET'
         next_kind = asset_kind if current_kind == 'DATASET' or asset_kind != 'DATASET' else current_kind
-        conn.execute(update(datasets).where(datasets.c.id == dataset_id).values(asset_kind=next_kind))
+        conn.execute(update(assets).where(assets.c.id == dataset_id).values(asset_kind=next_kind))
         return payloads
 
-    def compute_version_hash(self, job: JobRow, inputs: list[DatasetRow], outputs: list[DatasetRow]) -> str:
+    def compute_version_hash(self, job: JobRow, inputs: list[AssetRow], outputs: list[AssetRow]) -> str:
         payload = {
             'job_namespace': job.namespace,
             'job_name': job.name,
@@ -220,7 +220,7 @@ class ProjectionRepository:
         }
         return hashlib.sha256(json.dumps(payload, sort_keys=True).encode('utf-8')).hexdigest()
 
-    def compute_dataset_version(self, dataset: DatasetRow, run: RunRow, payloads: dict) -> str:
+    def compute_dataset_version(self, dataset: AssetRow, run: RunRow, payloads: dict) -> str:
         snapshot = {
             'dataset_namespace': dataset.namespace,
             'dataset_name': dataset.name,
@@ -232,15 +232,15 @@ class ProjectionRepository:
     def upsert_dataset_version(
         self,
         conn: Connection,
-        dataset: DatasetRow,
+        dataset: AssetRow,
         run: RunRow,
         payloads: dict,
-    ) -> DatasetVersionRow:
+    ) -> AssetVersionRow:
         version = self.compute_dataset_version(dataset, run, payloads)
         existing = conn.execute(
-            select(dataset_versions).where(
-                dataset_versions.c.dataset_id == dataset.id,
-                dataset_versions.c.version == version,
+            select(asset_versions).where(
+                asset_versions.c.asset_id == dataset.id,
+                asset_versions.c.version == version,
             )
         ).mappings().first()
         fields = payloads.get('schema', {}).get('fields', [])
@@ -249,11 +249,11 @@ class ProjectionRepository:
             payloads.get('lifecycleState', {}).get('lifecycleState')
             or DatasetLifecycleState.ACTIVE.value
         )
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         if existing:
             conn.execute(
-                update(dataset_versions)
-                .where(dataset_versions.c.id == existing['id'])
+                update(asset_versions)
+                .where(asset_versions.c.id == existing['id'])
                 .values(
                     fields=fields,
                     facets=payloads,
@@ -262,7 +262,7 @@ class ProjectionRepository:
                     created_at=now,
                 )
             )
-            return DatasetVersionRow.from_mapping(
+            return AssetVersionRow.from_mapping(
                 {
                     **dict(existing),
                     'fields': fields,
@@ -274,8 +274,8 @@ class ProjectionRepository:
             )
 
         dataset_version = {
-            'id': str(uuid4()),
-            'dataset_id': dataset.id,
+            'id': new_id(),
+            'asset_id': dataset.id,
             'version': version,
             'created_by_run_id': run.id,
             'storage_uri': storage_uri,
@@ -284,8 +284,8 @@ class ProjectionRepository:
             'lifecycle_state': lifecycle_state,
             'created_at': now,
         }
-        conn.execute(insert(dataset_versions).values(**dataset_version))
-        return DatasetVersionRow.from_mapping(dataset_version)
+        conn.execute(insert(asset_versions).values(**dataset_version))
+        return AssetVersionRow.from_mapping(dataset_version)
 
     @staticmethod
     def infer_asset_kind(payloads: dict) -> str:
@@ -339,11 +339,11 @@ class ProjectionRepository:
             job_version = JobVersionRow.from_mapping(existing)
         else:
             job_version_values = {
-                'id': str(uuid4()),
+                'id': new_id(),
                 'job_id': job_id,
                 'version_hash': version_hash,
                 'is_current': False,
-                'created_at': datetime.now(timezone.utc),
+                'created_at': utc_now(),
             }
             conn.execute(insert(job_versions).values(**job_version_values))
             job_version = JobVersionRow.from_mapping(job_version_values)
@@ -355,17 +355,17 @@ class ProjectionRepository:
         conn.execute(delete(job_version_io_mapping).where(job_version_io_mapping.c.job_version_id == job_version.id))
         rows = [
             {
-                'id': str(uuid4()),
+                'id': new_id(),
                 'job_version_id': job_version.id,
-                'dataset_id': dataset_id,
+                'asset_id': dataset_id,
                 'io_type': JobVersionIOType.INPUT.value,
             }
             for dataset_id in input_dataset_ids
         ] + [
             {
-                'id': str(uuid4()),
+                'id': new_id(),
                 'job_version_id': job_version.id,
-                'dataset_id': dataset_id,
+                'asset_id': dataset_id,
                 'io_type': JobVersionIOType.OUTPUT.value,
             }
             for dataset_id in output_dataset_ids
@@ -384,7 +384,7 @@ class ProjectionRepository:
         conn.execute(update(runs).where(runs.c.id == run_db_id).values(job_version_id=job_version_id))
 
     def _upsert_facets(self, conn: Connection, table, owner_key: str, owner_id: str, payloads: dict) -> None:
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         for facet_name, payload in payloads.items():
             existing = conn.execute(
                 select(table).where(getattr(table.c, owner_key) == owner_id, table.c.facet_name == facet_name)
@@ -398,7 +398,7 @@ class ProjectionRepository:
             else:
                 conn.execute(
                     insert(table).values(
-                        id=str(uuid4()),
+                        id=new_id(),
                         **{owner_key: owner_id},
                         facet_name=facet_name,
                         payload=payload,

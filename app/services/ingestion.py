@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from sqlalchemy.engine import Engine
 
-from app.models.api import IngestionResult
-from app.models.openlineage import (
+from app.models.api.ingestion import IngestionResult
+from app.models.schemas.openlineage import (
     DatasetEvent,
     JobEvent,
     OpenLineageEvent,

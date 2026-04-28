@@ -4,9 +4,9 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.engine import Connection
 
 from app.db.schema import (
-    dataset_facets,
-    dataset_versions,
-    datasets,
+    asset_facets,
+    asset_versions,
+    assets,
     job_facets,
     job_version_io_mapping,
     job_versions,
@@ -15,15 +15,15 @@ from app.db.schema import (
     run_facets,
     runs,
 )
-from app.models.db_rows import DatasetRow, DatasetVersionRow, JobRow, NamespaceRow, RunRow
-from app.models.lineage_enums import (
+from app.db.rows.lineage import AssetRow, AssetVersionRow, JobRow, NamespaceRow, RunRow
+from app.models.types.lineage import (
     DatasetLifecycleState,
     JobProcessingType,
     JobVersionIOType,
     RUN_EVENT_TO_WEB_RUN_STATE,
     WebRunState,
 )
-from app.models.metadata_api import (
+from app.models.api.metadata import (
     DatasetModel,
     DatasetVersionModel,
     DatasetVersionsResponse,
@@ -42,7 +42,7 @@ from app.models.metadata_api import (
     TagsResponse,
     VersionedNamespaceName,
 )
-from app.models.openlineage import RunEventType
+from app.models.schemas.openlineage import RunEventType
 
 
 class MetadataRepository:
@@ -99,14 +99,14 @@ class MetadataRepository:
         return JobsResponse(jobs=items, totalCount=total_count)
 
     def list_datasets(self, conn: Connection, namespace: str, limit: int, offset: int) -> DatasetsResponse:
-        base_query = select(datasets.c.id).where(datasets.c.namespace == namespace)
+        base_query = select(assets.c.id).where(assets.c.namespace == namespace)
         total_count = conn.execute(
-            select(func.count()).select_from(datasets).where(datasets.c.namespace == namespace)
+            select(func.count()).select_from(assets).where(assets.c.namespace == namespace)
         ).scalar_one()
         dataset_ids = [
             row[0]
             for row in conn.execute(
-                base_query.order_by(datasets.c.updated_at.desc()).limit(limit).offset(offset)
+                base_query.order_by(assets.c.updated_at.desc()).limit(limit).offset(offset)
             ).all()
         ]
         items = [self.get_dataset_by_id(conn, dataset_id) for dataset_id in dataset_ids]
@@ -151,16 +151,16 @@ class MetadataRepository:
 
     def get_dataset_by_name(self, conn: Connection, namespace: str, name: str) -> DatasetModel | None:
         row = conn.execute(
-            select(datasets).where(datasets.c.namespace == namespace, datasets.c.name == name)
+            select(assets).where(assets.c.namespace == namespace, assets.c.name == name)
         ).mappings().first()
         return self.get_dataset_by_id(conn, row['id']) if row else None
 
     def get_dataset_by_id(self, conn: Connection, dataset_id: str) -> DatasetModel | None:
-        row = conn.execute(select(datasets).where(datasets.c.id == dataset_id)).mappings().first()
+        row = conn.execute(select(assets).where(assets.c.id == dataset_id)).mappings().first()
         if not row:
             return None
-        dataset_row = DatasetRow.from_mapping(row)
-        dataset_facets_payload = self._collect_facets(conn, dataset_facets, 'dataset_id', dataset_row.id)
+        dataset_row = AssetRow.from_mapping(row)
+        dataset_facets_payload = self._collect_facets(conn, asset_facets, 'asset_id', dataset_row.id)
         latest_version = self._latest_dataset_version(conn, dataset_row.id)
         fields = self._dataset_fields(dataset_facets_payload, latest_version)
         updated_at = latest_version.created_at if latest_version else dataset_row.updated_at
@@ -203,21 +203,21 @@ class MetadataRepository:
         if not dataset:
             return DatasetVersionsResponse(versions=[], totalCount=0)
         dataset_row = conn.execute(
-            select(datasets.c.id).where(datasets.c.namespace == namespace, datasets.c.name == name)
+            select(assets.c.id).where(assets.c.namespace == namespace, assets.c.name == name)
         ).first()
         dataset_id = dataset_row[0]
         total_count = conn.execute(
-            select(func.count()).select_from(dataset_versions).where(dataset_versions.c.dataset_id == dataset_id)
+            select(func.count()).select_from(asset_versions).where(asset_versions.c.asset_id == dataset_id)
         ).scalar_one()
         rows = conn.execute(
-            select(dataset_versions)
-            .where(dataset_versions.c.dataset_id == dataset_id)
-            .order_by(desc(dataset_versions.c.created_at))
+            select(asset_versions)
+            .where(asset_versions.c.asset_id == dataset_id)
+            .order_by(desc(asset_versions.c.created_at))
             .limit(limit)
             .offset(offset)
         ).mappings().all()
         versions = [
-            self._dataset_version_model(conn, dataset, DatasetVersionRow.from_mapping(row))
+            self._dataset_version_model(conn, dataset, AssetVersionRow.from_mapping(row))
             for row in rows
         ]
         return DatasetVersionsResponse(versions=versions, totalCount=total_count)
@@ -248,7 +248,7 @@ class MetadataRepository:
         self,
         conn: Connection,
         dataset: DatasetModel,
-        version_row: DatasetVersionRow,
+        version_row: AssetVersionRow,
     ) -> DatasetVersionModel:
         created_by_run = None
         if version_row.created_by_run_id:
@@ -356,10 +356,10 @@ class MetadataRepository:
 
     def _current_job_datasets(self, conn: Connection, job_id: str) -> tuple[list[DatasetModel], list[DatasetModel]]:
         rows = conn.execute(
-            select(datasets, job_version_io_mapping.c.io_type)
+            select(assets, job_version_io_mapping.c.io_type)
             .select_from(
                 job_versions.join(job_version_io_mapping, job_versions.c.id == job_version_io_mapping.c.job_version_id).join(
-                    datasets, datasets.c.id == job_version_io_mapping.c.dataset_id
+                    assets, assets.c.id == job_version_io_mapping.c.asset_id
                 )
             )
             .where(job_versions.c.job_id == job_id, job_versions.c.is_current.is_(True))
@@ -376,14 +376,14 @@ class MetadataRepository:
         ]
         return [item for item in inputs if item is not None], [item for item in outputs if item is not None]
 
-    def _latest_dataset_version(self, conn: Connection, dataset_id: str) -> DatasetVersionRow | None:
+    def _latest_dataset_version(self, conn: Connection, dataset_id: str) -> AssetVersionRow | None:
         row = conn.execute(
-            select(dataset_versions)
-            .where(dataset_versions.c.dataset_id == dataset_id)
-            .order_by(desc(dataset_versions.c.created_at))
+            select(asset_versions)
+            .where(asset_versions.c.asset_id == dataset_id)
+            .order_by(desc(asset_versions.c.created_at))
             .limit(1)
         ).mappings().first()
-        return DatasetVersionRow.from_mapping(row) if row else None
+        return AssetVersionRow.from_mapping(row) if row else None
 
     def _collect_facets(self, conn: Connection, table, owner_key: str, owner_id: str) -> dict:
         rows = conn.execute(
@@ -410,7 +410,7 @@ class MetadataRepository:
     @staticmethod
     def _dataset_fields(
         facets_payload: dict,
-        latest_version: DatasetVersionRow | None,
+        latest_version: AssetVersionRow | None,
     ) -> list[FieldModel]:
         if latest_version and latest_version.fields:
             return MetadataRepository._fields_from_snapshot(latest_version.fields)

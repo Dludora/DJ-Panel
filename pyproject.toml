@@ -17,6 +17,7 @@ dependencies = [
   "pydantic-settings>=2.10.0,<3.0.0",
   "httpx>=0.28.0,<1.0.0",
   "psycopg[binary]>=3.2.9,<4.0.0",
+  "PyYAML>=6.0.0,<7.0.0",
 ]
 
 [project.optional-dependencies]
@@ -30,10 +31,10 @@ url = "https://mirrors.aliyun.com/pypi/simple/"
 default = true
 
 [project.scripts]
-dj-panel-worker = "tools.worker_client:main"
+dj-panel = "cli:main"
 
 [tool.setuptools.packages.find]
-include = ["app*", "tools*"]
+include = ["app*", "cli*"]
 
 [tool.pytest.ini_options]
 addopts = "-q"

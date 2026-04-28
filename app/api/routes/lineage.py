@@ -1,23 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import ValidationError
 from sqlalchemy.engine import Engine
 
+from app.api.dependencies import get_ingestion_service, get_lineage_query_service
+from app.api.errors import bad_request, validation_error
 from app.db.session import get_engine
-from app.models.api import IngestionResponse
+from app.models.api.ingestion import IngestionResponse
 from app.repositories.lineage_events import LineageEventRepository
 from app.services.event_resolver import parse_event
 from app.services.ingestion import IngestionService
 from app.services.lineage_query import LineageQueryService
 
 router = APIRouter(prefix="/api/v1", tags=["lineage"])
-
-
-def get_ingestion_service() -> IngestionService:
-    return IngestionService(get_engine())
-
-
-def get_lineage_query_service() -> LineageQueryService:
-    return LineageQueryService(get_engine())
 
 
 @router.post("/lineage", status_code=status.HTTP_201_CREATED)
@@ -29,9 +23,7 @@ async def create_lineage_event(
     try:
         event = parse_event(payload)
     except ValidationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=exc.errors()
-        ) from exc
+        raise validation_error(exc.errors()) from exc
     result = service.ingest(event, payload)
     return IngestionResponse(projected=result.projected)
 
@@ -45,9 +37,7 @@ def get_lineage(
     try:
         return service.get_lineage(node_id=nodeId, depth=depth)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-        ) from exc
+        raise bad_request(str(exc)) from exc
 
 
 @router.get("/events/lineage")
