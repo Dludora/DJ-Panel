@@ -2,12 +2,14 @@
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 revision = '0001_jobversion_lite'
 down_revision = None
 branch_labels = None
 depends_on = None
+
+
+json_type = sa.JSON()
 
 
 def upgrade() -> None:
@@ -60,7 +62,7 @@ def upgrade() -> None:
         sa.Column('job_name', sa.String(length=255), nullable=True),
         sa.Column('run_id', sa.String(length=255), nullable=True),
         sa.Column('producer', sa.Text(), nullable=True),
-        sa.Column('payload', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column('payload', json_type, nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
     )
     op.create_table(
@@ -86,7 +88,7 @@ def upgrade() -> None:
         sa.Column('id', sa.String(length=36), primary_key=True),
         sa.Column('run_id', sa.String(length=36), sa.ForeignKey('runs.id', ondelete='CASCADE'), nullable=False),
         sa.Column('facet_name', sa.String(length=255), nullable=False),
-        sa.Column('payload', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column('payload', json_type, nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.UniqueConstraint('run_id', 'facet_name', name='uq_run_facets_run_name'),
     )
@@ -95,7 +97,7 @@ def upgrade() -> None:
         sa.Column('id', sa.String(length=36), primary_key=True),
         sa.Column('job_id', sa.String(length=36), sa.ForeignKey('jobs.id', ondelete='CASCADE'), nullable=False),
         sa.Column('facet_name', sa.String(length=255), nullable=False),
-        sa.Column('payload', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column('payload', json_type, nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.UniqueConstraint('job_id', 'facet_name', name='uq_job_facets_job_name'),
     )
@@ -104,7 +106,7 @@ def upgrade() -> None:
         sa.Column('id', sa.String(length=36), primary_key=True),
         sa.Column('dataset_id', sa.String(length=36), sa.ForeignKey('datasets.id', ondelete='CASCADE'), nullable=False),
         sa.Column('facet_name', sa.String(length=255), nullable=False),
-        sa.Column('payload', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column('payload', json_type, nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.UniqueConstraint('dataset_id', 'facet_name', name='uq_dataset_facets_dataset_name'),
     )

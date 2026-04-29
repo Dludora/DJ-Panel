@@ -61,10 +61,20 @@ dj-panel
 - `--migrate`：启动前执行 `alembic upgrade head`
 - `--reload`：开发时开启热重载
 
+当前支持：
+- PostgreSQL
+- SQLite
+
 典型用法：
 
 ```bash
 dj-panel master --database-url postgresql+psycopg://user:pass@localhost:5432/dj_panel --migrate
+```
+
+SQLite 示例：
+
+```bash
+dj-panel master --database-url sqlite:///./dj_panel.db --migrate
 ```
 
 #### `dj-panel web`
@@ -200,7 +210,7 @@ dj-panel workspace members list --workspace llm-team
 
 ### 4. Recipe 管理层
 
-这一层围绕 Data-Juicer recipe YAML 展开。当前 CLI 把 recipe 视为平台中的“可复用处理定义”。
+这一层围绕 Data-Juicer recipe YAML 展开。
 
 #### `dj-panel recipe import`
 
@@ -427,9 +437,9 @@ CLI 还会自动规范化这些写法：
 dj-panel recipe list --workspace llm-team --json
 ```
 
-### 9. 推荐使用链路
+### 9. 使用链路
 
-一个典型的 Data-Juicer 使用流程如下：
+典型 Data-Juicer 使用流程如下：
 
 1. 启动 backend
 
@@ -475,7 +485,7 @@ dj-panel web --backend-url http://127.0.0.1:8000
 
 ### 10. 当前边界
 
-当前 CLI 已经覆盖：
+当前已覆盖：
 - backend 启动
 - web 开发服务启动
 - workspace 管理
@@ -547,10 +557,20 @@ Common arguments:
 - `--migrate`: run `alembic upgrade head` before startup
 - `--reload`: enable hot reload for development
 
+Currently supported:
+- PostgreSQL
+- SQLite
+
 Example:
 
 ```bash
 dj-panel master --database-url postgresql+psycopg://user:pass@localhost:5432/dj_panel --migrate
+```
+
+SQLite example:
+
+```bash
+dj-panel master --database-url sqlite:///./dj_panel.db --migrate
 ```
 
 #### `dj-panel web`

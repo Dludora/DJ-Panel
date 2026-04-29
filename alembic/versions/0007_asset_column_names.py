@@ -37,6 +37,8 @@ def _constraints(table_name: str) -> set[str]:
 
 
 def _rename_constraint(table_name: str, old_name: str, new_name: str) -> None:
+    if op.get_bind().dialect.name == "sqlite":
+        return
     constraints = _constraints(table_name)
     if old_name in constraints and new_name not in constraints:
         op.execute(

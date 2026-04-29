@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     database_url: str = Field(
-        default="postgresql+psycopg:///dj_panel",
+        default="sqlite:///./dj_panel.db",
         validation_alias=AliasChoices("DATABASE_URL", "DJ_PANEL_DATABASE_URL"),
     )
     app_env: str = "dev"

@@ -42,6 +42,8 @@ def _constraints(table_name: str) -> set[str]:
 
 
 def _rename_constraint(table_name: str, old_name: str, new_name: str) -> None:
+    if op.get_bind().dialect.name == "sqlite":
+        return
     if old_name in _constraints(table_name) and new_name not in _constraints(table_name):
         op.execute(
             sa.text(
@@ -51,6 +53,8 @@ def _rename_constraint(table_name: str, old_name: str, new_name: str) -> None:
 
 
 def _rename_index(table_name: str, old_name: str, new_name: str) -> None:
+    if op.get_bind().dialect.name == "sqlite":
+        return
     if old_name in _indexes(table_name) and new_name not in _indexes(table_name):
         op.execute(sa.text(f'ALTER INDEX "{old_name}" RENAME TO "{new_name}"'))
 
