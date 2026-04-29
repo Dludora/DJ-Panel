@@ -24,11 +24,13 @@ If you are new to the project, read in this order:
    Read this next for the long-term architectural direction.
 3. [DJ_PROCESSING_V1_DESIGN.md](./DJ_PROCESSING_V1_DESIGN.md)
    Read this for the scoped V1 Data-Juicer product design.
-4. [V1_API_OPENAPI_STYLE.md](./V1_API_OPENAPI_STYLE.md)
+4. [CLI_REFERENCE.md](./CLI_REFERENCE.md)
+   Use this when working on `dj-panel` commands, CLI defaults, or operator workflows.
+5. [V1_API_OPENAPI_STYLE.md](./V1_API_OPENAPI_STYLE.md)
    Use this when working on frontend-backend contracts or CLI-facing resource shapes.
-5. [DATABASE_SCHEMA_DRAFT.md](./DATABASE_SCHEMA_DRAFT.md)
+6. [DATABASE_SCHEMA_DRAFT.md](./DATABASE_SCHEMA_DRAFT.md)
    Use this when changing persistence or reasoning about data ownership.
-6. [DJ_WORKER_PAYLOAD_AND_SEQUENCE.md](./DJ_WORKER_PAYLOAD_AND_SEQUENCE.md)
+7. [DJ_WORKER_PAYLOAD_AND_SEQUENCE.md](./DJ_WORKER_PAYLOAD_AND_SEQUENCE.md)
    Use this when changing worker execution or task claim payloads.
 
 ## Document Boundaries
@@ -96,6 +98,27 @@ Use it when:
 - deciding whether something belongs in V1
 - reasoning about product scope and UX shape
 - implementing the DJ-only execution flow
+
+### [CLI_REFERENCE.md](./CLI_REFERENCE.md)
+
+What it covers:
+
+- the current `dj-panel` command tree
+- what each command layer is responsible for
+- local default resolution for `workspace`, `user`, and `base-url`
+- common CLI workflows for backend operators and DJ workers
+
+What it does not cover:
+
+- endpoint-by-endpoint API design rationale
+- full SQL ownership and schema design
+- long-term architecture beyond the current CLI surface
+
+Use it when:
+
+- onboarding someone to the CLI
+- adding or refactoring CLI commands
+- checking how a user is expected to operate the backend from the terminal
 
 ### [V1_API_OPENAPI_STYLE.md](./V1_API_OPENAPI_STYLE.md)
 
