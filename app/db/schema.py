@@ -120,17 +120,22 @@ run_submissions = Table(
         "recipe_id",
         String(36),
         ForeignKey("recipes.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
     ),
     Column(
         "recipe_version_id",
         String(36),
         ForeignKey("recipe_versions.id", ondelete="RESTRICT"),
-        nullable=False,
+        nullable=True,
     ),
+    Column("name", String(255), nullable=True),
     Column("requested_by", String(255), nullable=False),
+    Column(
+        "submission_kind", String(64), nullable=False, server_default="processing_pipeline"
+    ),
     Column("status", String(32), nullable=False),
     Column("parameters", json_type, nullable=False, server_default="{}"),
+    Column("spec", json_type, nullable=False, server_default="{}"),
     Column("root_lineage_node_id", Text, nullable=True),
     Column(
         "created_at", DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -205,7 +210,7 @@ tasks = Table(
         "recipe_version_id",
         String(36),
         ForeignKey("recipe_versions.id", ondelete="RESTRICT"),
-        nullable=False,
+        nullable=True,
     ),
     Column("task_kind", String(64), nullable=False, server_default="generic_command"),
     Column("status", String(32), nullable=False),

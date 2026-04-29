@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shlex
 import subprocess
 import time
 from pathlib import Path
@@ -12,10 +13,12 @@ import yaml
 
 
 DJ_TASK_KIND = 'dj_recipe'
+TRAIN_TASK_KIND = 'training'
+EVAL_TASK_KIND = 'evaluation'
 
 
 def console(message: str) -> None:
-    print(f'[dj-panel worker dj] {message}', flush=True)
+    print(f'[dj-panel worker] {message}', flush=True)
 
 
 def client(base_url: str) -> httpx.Client:
@@ -68,9 +71,15 @@ def heartbeat(http: httpx.Client, worker_id: str, *, dj_bin: str, workdir: Path)
 
 
 def claim_task(http: httpx.Client, workspace: str, worker_id: str) -> Optional[dict[str, Any]]:
+    return claim_task_for_kinds(http, workspace, worker_id, [DJ_TASK_KIND])
+
+
+def claim_task_for_kinds(
+    http: httpx.Client, workspace: str, worker_id: str, task_kinds: list[str]
+) -> Optional[dict[str, Any]]:
     response = http.post(
         f'/api/v1/workspaces/{workspace}/tasks/claim',
-        json={'workerId': worker_id, 'supportedTaskKinds': [DJ_TASK_KIND]},
+        json={'workerId': worker_id, 'supportedTaskKinds': task_kinds},
     )
     response.raise_for_status()
     payload = response.json()
@@ -262,6 +271,191 @@ def run_once(
         return True
 
 
+def register_command_worker(
+    http: httpx.Client,
+    workspace: str,
+    worker_id: str,
+    display_name: str,
+    *,
+    worker_type: str,
+    task_kind: str,
+    workdir: Path,
+) -> None:
+    http.post(
+        f'/api/v1/workspaces/{workspace}/workers/register',
+        json={
+            'workerId': worker_id,
+            'displayName': display_name,
+            'labels': {
+                'host': os.uname().nodename,
+                'workerType': worker_type,
+            },
+            'capabilities': {
+                'execution': 'command',
+                'taskKinds': [task_kind],
+                'workdir': str(workdir),
+            },
+            'maxConcurrency': 1,
+        },
+    ).raise_for_status()
+
+
+def command_worker_heartbeat(
+    http: httpx.Client,
+    worker_id: str,
+    *,
+    worker_type: str,
+    task_kind: str,
+    workdir: Path,
+) -> None:
+    http.post(
+        f'/api/v1/workers/{worker_id}/heartbeat',
+        json={
+            'status': 'ACTIVE',
+            'labels': {'workerType': worker_type},
+            'capabilities': {
+                'execution': 'command',
+                'taskKinds': [task_kind],
+                'workdir': str(workdir),
+            },
+        },
+    ).raise_for_status()
+
+
+def command_task_workdir(task: dict[str, Any], fallback_workdir: Path) -> Path:
+    execution_spec = task.get('executionSpec') or {}
+    raw_workdir = execution_spec.get('workdir')
+    if raw_workdir:
+        return Path(str(raw_workdir)).expanduser()
+    return fallback_workdir
+
+
+def run_command_task(
+    http: httpx.Client,
+    *,
+    task: dict[str, Any],
+    fallback_workdir: Path,
+) -> None:
+    task_id = task['taskId']
+    attempt_id = task['attemptId']
+    lease_token = task['leaseToken']
+    workdir = command_task_workdir(task, fallback_workdir)
+    command = str(task['command'])
+    env = {**os.environ, **{k: str(v) for k, v in (task.get('envVars') or {}).items()}}
+    sequence = 0
+    console(f'claimed task={task_id} attempt={attempt_id} workdir={workdir}')
+
+    post_transition(
+        http,
+        task_id,
+        'start',
+        {
+            'attemptId': attempt_id,
+            'leaseToken': lease_token,
+        },
+    )
+    sequence = post_log(http, attempt_id, 'SYSTEM', f'running: {command}', sequence)
+    console(f'running {command}')
+
+    try:
+        process = subprocess.Popen(
+            command,
+            cwd=str(workdir),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            env=env,
+            shell=True,
+        )
+        assert process.stdout is not None
+        for line in process.stdout:
+            sequence = post_log(http, attempt_id, 'STDOUT', line.rstrip('\n'), sequence)
+        return_code = process.wait(timeout=task['timeoutSeconds'])
+    except subprocess.TimeoutExpired:
+        process.kill()
+        post_log(http, attempt_id, 'STDERR', 'Command task timed out', sequence)
+        post_transition(
+            http,
+            task_id,
+            'fail',
+            {
+                'attemptId': attempt_id,
+                'leaseToken': lease_token,
+                'failureReason': 'Command task timed out',
+            },
+        )
+        console(f'task timed out task={task_id}')
+        return
+    except Exception as exc:
+        post_transition(
+            http,
+            task_id,
+            'fail',
+            {
+                'attemptId': attempt_id,
+                'leaseToken': lease_token,
+                'failureReason': str(exc),
+            },
+        )
+        raise
+
+    if return_code == 0:
+        post_transition(
+            http,
+            task_id,
+            'complete',
+            {'attemptId': attempt_id, 'leaseToken': lease_token},
+        )
+        console(f'task succeeded task={task_id}')
+    else:
+        post_transition(
+            http,
+            task_id,
+            'fail',
+            {
+                'attemptId': attempt_id,
+                'leaseToken': lease_token,
+                'failureReason': f'Command exited with {return_code}',
+            },
+        )
+        console(f'task failed task={task_id} exit_code={return_code}')
+
+
+def run_command_once(
+    base_url: str,
+    workspace: str,
+    worker_id: str,
+    display_name: str,
+    *,
+    worker_type: str,
+    task_kind: str,
+    workdir: Path,
+) -> bool:
+    with client(base_url) as http:
+        register_command_worker(
+            http,
+            workspace,
+            worker_id,
+            display_name,
+            worker_type=worker_type,
+            task_kind=task_kind,
+            workdir=workdir,
+        )
+        command_worker_heartbeat(
+            http,
+            worker_id,
+            worker_type=worker_type,
+            task_kind=task_kind,
+            workdir=workdir,
+        )
+        task = claim_task_for_kinds(http, workspace, worker_id, [task_kind])
+        if not task:
+            console(f'no {task_kind} task available workspace={workspace}')
+            return False
+        run_command_task(http, task=task, fallback_workdir=workdir)
+        return True
+
+
 def add_worker_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('--base-url', default=None)
     parser.add_argument('--workspace', default=None)
@@ -275,10 +469,37 @@ def add_worker_args(parser: argparse.ArgumentParser) -> None:
 def run_worker_from_args(args: argparse.Namespace) -> None:
     display_name = args.display_name or args.worker_id
     args.workdir.mkdir(parents=True, exist_ok=True)
+    worker_mode = getattr(args, 'worker_mode', 'dj')
     console(
-        f'starting worker={args.worker_id} workspace={args.workspace} '
-        f'base_url={args.base_url} workdir={args.workdir} dj_bin={args.dj_bin}'
+        f'starting mode={worker_mode} worker={args.worker_id} workspace={args.workspace} '
+        f'base_url={args.base_url} workdir={args.workdir}'
     )
+    if worker_mode in {'train', 'eval'}:
+        task_kind = TRAIN_TASK_KIND if worker_mode == 'train' else EVAL_TASK_KIND
+        if args.poll_interval <= 0:
+            run_command_once(
+                args.base_url,
+                args.workspace,
+                args.worker_id,
+                display_name,
+                worker_type=worker_mode,
+                task_kind=task_kind,
+                workdir=args.workdir,
+            )
+            return
+        while True:
+            run_command_once(
+                args.base_url,
+                args.workspace,
+                args.worker_id,
+                display_name,
+                worker_type=worker_mode,
+                task_kind=task_kind,
+                workdir=args.workdir,
+            )
+            console(f'sleeping {args.poll_interval}s')
+            time.sleep(args.poll_interval)
+        return
     if args.poll_interval <= 0:
         run_once(
             args.base_url,

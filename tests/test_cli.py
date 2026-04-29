@@ -8,6 +8,7 @@ from cli import (
     DEFAULT_DJ_COMMAND,
     _load_json_arg,
     _load_recipe_body,
+    _load_structured_arg,
     _normalize_base_url,
     _recipe_payload,
     _render_config,
@@ -59,6 +60,22 @@ def test_load_json_arg_accepts_inline_json_and_file(tmp_path: Path) -> None:
     assert _load_json_arg(str(payload_path)) == {'sampleSize': 10}
 
 
+def test_load_structured_arg_accepts_yaml_file(tmp_path: Path) -> None:
+    payload_path = tmp_path / 'train_spec.yaml'
+    payload_path.write_text(
+        'name: qwen2-sft-v1\n'
+        'command: python train.py --config train.yaml\n'
+        'workdir: /tmp/llm-trainer\n',
+        encoding='utf-8',
+    )
+
+    assert _load_structured_arg(str(payload_path)) == {
+        'name': 'qwen2-sft-v1',
+        'command': 'python train.py --config train.yaml',
+        'workdir': '/tmp/llm-trainer',
+    }
+
+
 def test_normalize_base_url_accepts_common_localhost_forms() -> None:
     assert _normalize_base_url('http:localhost:8000') == 'http://localhost:8000'
     assert _normalize_base_url('localhost:8000') == 'http://localhost:8000'
@@ -104,9 +121,11 @@ def test_run_submit_help_is_available(capsys: pytest.CaptureFixture[str], monkey
 
     assert exc.value.code == 0
     output = capsys.readouterr().out
+    assert '--kind' in output
     assert '--recipe' in output
     assert '--recipe-version-id' in output
     assert '--parameters' in output
+    assert '--spec' in output
 
 
 def test_recipe_list_and_show_help_are_available(
@@ -171,3 +190,24 @@ def test_web_cli_help_is_available(capsys: pytest.CaptureFixture[str], monkeypat
     assert '--web-dir' in output
     assert '--npm-bin' in output
     assert '--install-deps' in output
+
+
+def test_worker_train_and_eval_help_are_available(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from cli import main
+
+    monkeypatch.setattr('sys.argv', ['dj-panel', 'worker', 'train', '--help'])
+    with pytest.raises(SystemExit) as train_exc:
+        main()
+    assert train_exc.value.code == 0
+    train_output = capsys.readouterr().out
+    assert '--worker-id' in train_output
+    assert '--poll-interval' in train_output
+
+    monkeypatch.setattr('sys.argv', ['dj-panel', 'worker', 'eval', '--help'])
+    with pytest.raises(SystemExit) as eval_exc:
+        main()
+    assert eval_exc.value.code == 0
+    eval_output = capsys.readouterr().out
+    assert '--worker-id' in eval_output

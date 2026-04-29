@@ -56,7 +56,7 @@ class TaskService:
             if not claimed:
                 return TaskClaimResponse(claimed=False, task=None).to_api_dict()
             task, attempt = claimed
-            version = self.recipe_repo.get_recipe_version_by_id(conn, task.recipe_version_id)
+            version = self.recipe_repo.get_recipe_version_by_id(conn, task.recipe_version_id) if task.recipe_version_id else None
             submission = self.submission_repo.get_run_submission_by_id(conn, task.run_submission_id)
             payload = TaskClaimPayload(
                 taskId=task.id,
@@ -224,18 +224,21 @@ class TaskService:
             return {
                 'id': task.run_submission_id,
                 'workspaceId': task.workspace_id,
-                'submissionKind': 'processing_pipeline',
+                'submissionKind': task.task_kind,
                 'parameters': {},
+                'spec': {},
             }
         return {
             'id': submission.id,
             'workspaceId': submission.workspace_id,
             'recipeId': submission.recipe_id,
             'recipeVersionId': submission.recipe_version_id,
+            'name': submission.name,
             'requestedBy': submission.requested_by,
-            'submissionKind': 'processing_pipeline',
+            'submissionKind': submission.submission_kind,
             'status': submission.status,
             'parameters': submission.parameters,
+            'spec': submission.spec,
             'rootLineageNodeId': submission.root_lineage_node_id,
             'createdAt': submission.created_at,
             'startedAt': submission.started_at,
@@ -265,6 +268,8 @@ class TaskService:
     def _recipe_version_response(version):
         from app.models.api.control_plane import RecipeVersionResponse
 
+        if version is None:
+            return None
         return RecipeVersionResponse(
             id=version.id,
             recipeId=version.recipe_id,

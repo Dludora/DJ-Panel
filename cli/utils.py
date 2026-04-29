@@ -96,6 +96,22 @@ def load_json_arg(raw: str | None) -> dict[str, Any]:
     return payload
 
 
+def load_structured_arg(raw: str | None) -> dict[str, Any]:
+    if not raw:
+        return {}
+    path = Path(raw).expanduser()
+    if path.exists():
+        text = path.read_text(encoding="utf-8")
+    else:
+        text = raw
+    payload = yaml.safe_load(text)
+    if payload is None:
+        return {}
+    if not isinstance(payload, dict):
+        raise ValueError("structured value must be an object")
+    return payload
+
+
 def load_recipe_body(path: Path) -> dict[str, Any]:
     payload = yaml.safe_load(path.read_text(encoding="utf-8"))
     if payload is None:
@@ -315,12 +331,15 @@ def render_submission(payload: dict[str, Any]) -> None:
     print_kv(
         [
             ("Submission ID", payload.get("id")),
+            ("Name", payload.get("name")),
             ("Workspace ID", payload.get("workspaceId")),
             ("Recipe ID", payload.get("recipeId")),
             ("Recipe Version ID", payload.get("recipeVersionId")),
+            ("Kind", payload.get("submissionKind")),
             ("Status", payload.get("status")),
             ("Requested By", payload.get("requestedBy")),
             ("Parameters", payload.get("parameters")),
+            ("Spec", payload.get("spec")),
             ("Inputs", payload.get("inputs")),
             ("Outputs", payload.get("outputs")),
             ("Created", payload.get("createdAt")),
@@ -334,6 +353,8 @@ def render_submissions(payload: dict[str, Any]) -> None:
         payload.get("submissions", []),
         [
             ("id", "ID"),
+            ("name", "NAME"),
+            ("submissionKind", "KIND"),
             ("recipeId", "RECIPE ID"),
             ("status", "STATUS"),
             ("requestedBy", "REQUESTED BY"),

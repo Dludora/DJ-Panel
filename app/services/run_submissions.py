@@ -25,6 +25,13 @@ class RunSubmissionService:
             if not workspace:
                 raise ValueError("workspace not found")
 
+            if payload.submission_kind in {"training", "evaluation"}:
+                submission = self._create_command_submission(conn, workspace.id, payload)
+                return {"submission": self._response(submission).to_api_dict()}
+
+            if not payload.recipe_version_id:
+                raise ValueError("recipe version is required for processing submissions")
+
             version = self.recipe_repo.get_recipe_version_by_id(
                 conn, payload.recipe_version_id
             )
@@ -40,8 +47,11 @@ class RunSubmissionService:
                 workspace_id=workspace.id,
                 recipe_id=recipe.id,
                 recipe_version_id=version.id,
+                name=payload.name,
                 requested_by=payload.requested_by,
+                submission_kind=payload.submission_kind,
                 parameters=payload.parameters,
+                spec={},
             )
 
             env_vars = {**(version.env_template or {}), **(payload.parameters or {})}
@@ -87,13 +97,57 @@ class RunSubmissionService:
             workspaceId=row.workspace_id,
             recipeId=row.recipe_id,
             recipeVersionId=row.recipe_version_id,
+            name=row.name,
             requestedBy=row.requested_by,
-            submissionKind="processing_pipeline",
+            submissionKind=row.submission_kind,
             status=row.status,
             parameters=row.parameters,
+            spec=row.spec,
             rootLineageNodeId=row.root_lineage_node_id,
             createdAt=row.created_at,
             startedAt=row.started_at,
             endedAt=row.ended_at,
             failureReason=row.failure_reason,
         )
+
+    def _create_command_submission(self, conn, workspace_id: str, payload):
+        spec = dict(payload.spec or {})
+        command = str(spec.get("command") or "").strip()
+        if not command:
+            raise ValueError("command spec requires a non-empty command")
+        workdir = str(spec.get("workdir") or "").strip()
+        env = spec.get("env") or {}
+        if not isinstance(env, dict):
+            raise ValueError("command spec env must be an object")
+        timeout_seconds = int(
+            spec.get("timeoutSeconds", spec.get("timeout_seconds", 7200))
+        )
+        submission = self.submission_repo.create_run_submission(
+            conn,
+            workspace_id=workspace_id,
+            recipe_id=None,
+            recipe_version_id=None,
+            name=payload.name or spec.get("name"),
+            requested_by=payload.requested_by,
+            submission_kind=payload.submission_kind,
+            parameters=payload.parameters,
+            spec=spec,
+        )
+        self.task_repo.create_task(
+            conn,
+            workspace_id=workspace_id,
+            run_submission_id=submission.id,
+            recipe_version_id=None,
+            command=command,
+            script_path=workdir,
+            env_vars={str(key): value for key, value in env.items()},
+            execution_spec={
+                "workdir": workdir,
+                "submissionSpec": spec,
+                "inputs": payload.inputs,
+                "outputs": payload.outputs,
+            },
+            timeout_seconds=timeout_seconds,
+            task_kind=payload.submission_kind,
+        )
+        return submission

@@ -20,7 +20,7 @@ class TaskRepository:
         conn: Connection,
         workspace_id: str,
         run_submission_id: str,
-        recipe_version_id: str,
+        recipe_version_id: str | None,
         command: str,
         script_path: str,
         env_vars: dict,

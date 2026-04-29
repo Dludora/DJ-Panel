@@ -17,6 +17,8 @@ from cli.commands import (
     cmd_run_submit,
     cmd_web,
     cmd_worker_dj,
+    cmd_worker_eval,
+    cmd_worker_train,
     cmd_workspace_create,
     cmd_workspace_list,
     cmd_workspace_members_add,
@@ -138,10 +140,17 @@ def build_parser() -> argparse.ArgumentParser:
     run_submit = run_sub.add_parser('submit', help='Create a processing run submission')
     add_base_url_flag(run_submit)
     run_submit.add_argument('--workspace', default=None)
+    run_submit.add_argument(
+        '--kind',
+        default='processing_pipeline',
+        choices=['processing_pipeline', 'training', 'evaluation'],
+    )
     run_submit.add_argument('--recipe', default=None, help='Recipe name; uses current version')
     run_submit.add_argument('--recipe-version-id', default=None)
     run_submit.add_argument('--requested-by', default=None)
     run_submit.add_argument('--parameters', default=None, help='JSON object or path to a JSON file merged into the materialized recipe')
+    run_submit.add_argument('--spec', default=None, help='YAML/JSON object or file for command-based training/evaluation submissions')
+    run_submit.add_argument('--name', default=None)
     add_json_output_flag(run_submit)
     run_submit.set_defaults(handler=cmd_run_submit)
 
@@ -149,7 +158,16 @@ def build_parser() -> argparse.ArgumentParser:
     worker_sub = worker.add_subparsers(dest='worker_kind', required=True)
     worker_dj = worker_sub.add_parser('dj', help='Run a Data-Juicer worker')
     add_worker_args(worker_dj)
+    worker_dj.set_defaults(worker_mode='dj')
     worker_dj.set_defaults(handler=cmd_worker_dj)
+    worker_train = worker_sub.add_parser('train', help='Run a training command worker')
+    add_worker_args(worker_train)
+    worker_train.set_defaults(worker_mode='train')
+    worker_train.set_defaults(handler=cmd_worker_train)
+    worker_eval = worker_sub.add_parser('eval', help='Run an evaluation command worker')
+    add_worker_args(worker_eval)
+    worker_eval.set_defaults(worker_mode='eval')
+    worker_eval.set_defaults(handler=cmd_worker_eval)
 
     return parser
 

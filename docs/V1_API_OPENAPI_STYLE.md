@@ -280,40 +280,56 @@ components:
 
     RunSubmission:
       type: object
-      required: [id, workspaceSlug, submissionKind, status]
+      required: [id, workspaceId, submissionKind, status]
       properties:
         id:
           type: string
           format: uuid
-        workspaceSlug:
+        workspaceId:
           type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
         submissionKind:
           type: string
-          enum: [processing_pipeline]
+          enum: [processing_pipeline, training, evaluation]
         status:
           type: string
-          enum: [PENDING, DISPATCHED, RUNNING, SUCCEEDED, FAILED, CANCELLED]
+          enum: [PENDING, CLAIMED, RUNNING, SUCCEEDED, FAILED, CANCELLED]
+        recipeId:
+          type: string
+          format: uuid
+          nullable: true
         recipeVersionId:
           type: string
           format: uuid
+          nullable: true
         requestedBy:
           type: string
         parameters:
           type: object
           additionalProperties: true
-        inputs:
-          type: array
-          items:
-            $ref: '#/components/schemas/RunSubmissionInput'
-        outputs:
-          type: array
-          items:
-            $ref: '#/components/schemas/RunSubmissionOutput'
-        createdTaskIds:
-          type: array
-          items:
-            type: string
-            format: uuid
+        spec:
+          type: object
+          additionalProperties: true
+        rootLineageNodeId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+        failureReason:
+          type: string
+          nullable: true
 
     Worker:
       type: object
@@ -323,7 +339,7 @@ components:
           type: string
         workerType:
           type: string
-          enum: [dj]
+          enum: [dj, train, eval]
         displayName:
           type: string
         labels:
@@ -344,7 +360,7 @@ components:
           format: uuid
         taskKind:
           type: string
-          enum: [dj_recipe]
+          enum: [dj_recipe, training, evaluation]
         status:
           type: string
           enum: [PENDING, CLAIMED, RUNNING, SUCCEEDED, FAILED, CANCELLED]
@@ -353,6 +369,16 @@ components:
           format: uuid
         leaseToken:
           type: string
+        command:
+          type: string
+        executionSpec:
+          type: object
+          additionalProperties: true
+        envVars:
+          type: object
+          additionalProperties: true
+        timeoutSeconds:
+          type: integer
 
     TaskLog:
       type: object
@@ -698,7 +724,7 @@ These routes should not require a second runtime fact pipeline. They should be b
   /api/v1/workspaces/{workspace_slug}/run-submissions:
     post:
       tags: [run-submissions]
-      summary: Create processing submission
+      summary: Create processing, training, or evaluation submission
       parameters:
         - in: path
           name: workspace_slug
@@ -711,19 +737,30 @@ These routes should not require a second runtime fact pipeline. They should be b
           application/json:
             schema:
               type: object
-              required: [submissionKind, recipeVersionId, inputs]
+              required: [submissionKind, requestedBy]
               properties:
                 submissionKind:
                   type: string
-                  enum: [processing_pipeline]
+                  enum: [processing_pipeline, training, evaluation]
+                name:
+                  type: string
                 recipeVersionId:
                   type: string
                   format: uuid
+                  nullable: true
                 requestedBy:
                   type: string
                 parameters:
                   type: object
                   additionalProperties: true
+                spec:
+                  type: object
+                  additionalProperties: true
+                  description: >
+                    Used by command-based training and evaluation submissions.
+                    Common fields in the current implementation are `name`,
+                    `command`, `workdir`, `env`, `timeoutSeconds`, `inputs`,
+                    and `outputs`.
                 inputs:
                   type: array
                   items:
@@ -732,6 +769,15 @@ These routes should not require a second runtime fact pipeline. They should be b
                   type: array
                   items:
                     $ref: '#/components/schemas/RunSubmissionOutput'
+              oneOf:
+                - required: [submissionKind, recipeVersionId, requestedBy]
+                  properties:
+                    submissionKind:
+                      enum: [processing_pipeline]
+                - required: [submissionKind, requestedBy, spec]
+                  properties:
+                    submissionKind:
+                      enum: [training, evaluation]
       responses:
         '201':
           description: Submission created
@@ -821,7 +867,7 @@ These routes should not require a second runtime fact pipeline. They should be b
                   type: array
                   items:
                     type: string
-                    enum: [dj_recipe]
+                    enum: [dj_recipe, training, evaluation]
       responses:
         '200':
           description: Claim result
@@ -834,6 +880,45 @@ These routes should not require a second runtime fact pipeline. They should be b
                     type: boolean
                   task:
                     $ref: '#/components/schemas/Task'
+```
+
+Current command-based training and evaluation note:
+
+- `submissionKind = training` or `submissionKind = evaluation` does not require
+  `recipeVersionId`
+- the backend stores the raw command spec under `submission.spec`
+- the backend expands that submission into one task whose:
+  - `taskKind` is `training` or `evaluation`
+  - `command` is copied from `spec.command`
+  - `executionSpec.workdir` is copied from `spec.workdir`
+  - `envVars` is copied from `spec.env`
+- workers claim those tasks with `supportedTaskKinds = ["training"]` or
+  `supportedTaskKinds = ["evaluation"]`
+
+Current minimal training submission example:
+
+```json
+{
+  "submissionKind": "training",
+  "name": "qwen2-sft-v1",
+  "requestedBy": "alice",
+  "spec": {
+    "name": "qwen2-sft-v1",
+    "command": "python train.py --config train.yaml",
+    "workdir": "/mnt/team-repos/llm-trainer",
+    "env": {
+      "MLFLOW_TRACKING_URI": "http://127.0.0.1:5000",
+      "MLFLOW_EXPERIMENT_NAME": "qwen2-sft"
+    },
+    "timeoutSeconds": 7200,
+    "inputs": [
+      {"uri": "/data/processed/train.jsonl"}
+    ],
+    "outputs": [
+      {"uri": "/data/models/qwen2-sft-v1"}
+    ]
+  }
+}
 ```
 
 ### 5.12 `POST /api/v1/tasks/{task_id}/start`

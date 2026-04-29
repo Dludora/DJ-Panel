@@ -249,6 +249,68 @@ def test_recipe_version_create_accepts_camel_case_payload() -> None:
         client.cleanup()  # type: ignore[attr-defined]
 
 
+def test_training_submission_creates_command_task() -> None:
+    client = make_client()
+    try:
+        workspace = create_workspace(client, 'team-train')
+
+        run_response = client.post(
+            f"/api/v1/workspaces/{workspace['slug']}/run-submissions",
+            json={
+                'submissionKind': 'training',
+                'name': 'qwen2-sft-v1',
+                'requestedBy': 'alice',
+                'spec': {
+                    'name': 'qwen2-sft-v1',
+                    'command': 'python train.py --config train.yaml',
+                    'workdir': '/tmp/llm-trainer',
+                    'env': {
+                        'MLFLOW_TRACKING_URI': 'http://127.0.0.1:5000',
+                        'MLFLOW_EXPERIMENT_NAME': 'qwen2-sft',
+                    },
+                    'timeoutSeconds': 7200,
+                },
+                'inputs': [{'uri': '/data/processed/train.jsonl'}],
+                'outputs': [{'uri': '/data/models/qwen2-sft-v1'}],
+            },
+        )
+        run_response.raise_for_status()
+        submission = run_response.json()['submission']
+        assert submission['submissionKind'] == 'training'
+        assert submission['name'] == 'qwen2-sft-v1'
+        assert submission['recipeId'] is None
+        assert submission['recipeVersionId'] is None
+        assert submission['spec']['command'] == 'python train.py --config train.yaml'
+
+        worker_response = client.post(
+            f"/api/v1/workspaces/{workspace['slug']}/workers/register",
+            json={
+                'workerId': 'train-worker-1',
+                'displayName': 'Train Worker 1',
+                'labels': {'zone': 'local'},
+                'capabilities': {'execution': 'command', 'taskKinds': ['training']},
+                'maxConcurrency': 1,
+            },
+        )
+        worker_response.raise_for_status()
+
+        claim_response = client.post(
+            f"/api/v1/workspaces/{workspace['slug']}/tasks/claim",
+            json={'workerId': 'train-worker-1', 'supportedTaskKinds': ['training']},
+        )
+        claim_response.raise_for_status()
+        claim = claim_response.json()
+        assert claim['claimed'] is True
+        assert claim['task']['taskKind'] == 'training'
+        assert claim['task']['recipeVersion'] is None
+        assert claim['task']['command'] == 'python train.py --config train.yaml'
+        assert claim['task']['executionSpec']['workdir'] == '/tmp/llm-trainer'
+        assert claim['task']['envVars']['MLFLOW_EXPERIMENT_NAME'] == 'qwen2-sft'
+        assert claim['task']['submission']['submissionKind'] == 'training'
+    finally:
+        client.cleanup()  # type: ignore[attr-defined]
+
+
 def test_recipe_create_rejects_snake_case_payload() -> None:
     client = make_client()
     try:

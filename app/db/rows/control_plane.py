@@ -111,11 +111,14 @@ class RecipeVersionRow:
 class RunSubmissionRow:
     id: str
     workspace_id: str
-    recipe_id: str
-    recipe_version_id: str
+    recipe_id: Optional[str]
+    recipe_version_id: Optional[str]
+    name: Optional[str]
     requested_by: str
+    submission_kind: str
     status: str
     parameters: dict[str, Any]
+    spec: dict[str, Any]
     root_lineage_node_id: Optional[str]
     created_at: datetime
     started_at: Optional[datetime]
@@ -127,11 +130,14 @@ class RunSubmissionRow:
         return cls(
             id=_value(mapping, "id"),
             workspace_id=_value(mapping, "workspace_id"),
-            recipe_id=_value(mapping, "recipe_id"),
-            recipe_version_id=_value(mapping, "recipe_version_id"),
+            recipe_id=mapping.get("recipe_id"),
+            recipe_version_id=mapping.get("recipe_version_id"),
+            name=mapping.get("name"),
             requested_by=_value(mapping, "requested_by"),
+            submission_kind=mapping.get("submission_kind", "processing_pipeline"),
             status=_value(mapping, "status"),
             parameters=_value(mapping, "parameters") or {},
+            spec=_value(mapping, "spec") or {},
             root_lineage_node_id=mapping.get("root_lineage_node_id"),
             created_at=_value(mapping, "created_at"),
             started_at=mapping.get("started_at"),
@@ -174,7 +180,7 @@ class TaskRow:
     id: str
     workspace_id: str
     run_submission_id: str
-    recipe_version_id: str
+    recipe_version_id: Optional[str]
     task_kind: str
     status: str
     assigned_worker_id: Optional[str]
@@ -198,7 +204,7 @@ class TaskRow:
             id=_value(mapping, "id"),
             workspace_id=_value(mapping, "workspace_id"),
             run_submission_id=_value(mapping, "run_submission_id"),
-            recipe_version_id=_value(mapping, "recipe_version_id"),
+            recipe_version_id=mapping.get("recipe_version_id"),
             task_kind=mapping.get("task_kind", "generic_command"),
             status=_value(mapping, "status"),
             assigned_worker_id=mapping.get("assigned_worker_id"),

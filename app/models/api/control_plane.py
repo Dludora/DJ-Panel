@@ -111,10 +111,12 @@ class RecipeVersionsResponse(ApiModel):
 
 
 class RunSubmissionCreateRequest(BaseModel):
-    recipe_version_id: str = Field(alias="recipeVersionId")
+    recipe_version_id: Optional[str] = Field(default=None, alias="recipeVersionId")
+    name: Optional[str] = None
     requested_by: str = Field(alias="requestedBy")
     submission_kind: str = Field(default="processing_pipeline", alias="submissionKind")
     parameters: dict[str, Any] = Field(default_factory=dict)
+    spec: dict[str, Any] = Field(default_factory=dict)
     inputs: list[dict[str, Any]] = Field(default_factory=list)
     outputs: list[dict[str, Any]] = Field(default_factory=list)
 
@@ -122,12 +124,14 @@ class RunSubmissionCreateRequest(BaseModel):
 class RunSubmissionResponse(ApiModel):
     id: str
     workspace_id: str = Field(alias="workspaceId")
-    recipe_id: str = Field(alias="recipeId")
-    recipe_version_id: str = Field(alias="recipeVersionId")
+    recipe_id: Optional[str] = Field(default=None, alias="recipeId")
+    recipe_version_id: Optional[str] = Field(default=None, alias="recipeVersionId")
+    name: Optional[str] = None
     requested_by: str = Field(alias="requestedBy")
     submission_kind: str = Field(default="processing_pipeline", alias="submissionKind")
     status: str
     parameters: dict[str, Any] = Field(default_factory=dict)
+    spec: dict[str, Any] = Field(default_factory=dict)
     root_lineage_node_id: Optional[str] = Field(default=None, alias="rootLineageNodeId")
     created_at: datetime = Field(alias="createdAt")
     started_at: Optional[datetime] = Field(default=None, alias="startedAt")
@@ -197,7 +201,7 @@ class TaskResponse(ApiModel):
     id: str
     workspace_id: str = Field(alias="workspaceId")
     run_submission_id: str = Field(alias="runSubmissionId")
-    recipe_version_id: str = Field(alias="recipeVersionId")
+    recipe_version_id: Optional[str] = Field(default=None, alias="recipeVersionId")
     task_kind: str = Field(default="generic_command", alias="taskKind")
     status: str
     assigned_worker_id: Optional[str] = Field(default=None, alias="assignedWorkerId")
@@ -229,7 +233,9 @@ class TaskClaimPayload(ApiModel):
     lease_token: str = Field(alias="leaseToken")
     task_kind: str = Field(default="generic_command", alias="taskKind")
     submission: dict[str, Any] = Field(default_factory=dict)
-    recipe_version: RecipeVersionResponse = Field(alias="recipeVersion")
+    recipe_version: Optional[RecipeVersionResponse] = Field(
+        default=None, alias="recipeVersion"
+    )
     execution_spec: dict[str, Any] = Field(alias="executionSpec")
     env_vars: dict[str, Any] = Field(alias="envVars")
     command: str

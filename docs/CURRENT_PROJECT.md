@@ -23,12 +23,15 @@ The practical product scope right now is:
 
 - Data-Juicer recipe authoring and versioning
 - processing submission creation
+- command-based training and evaluation submission creation
 - DJ worker polling and execution
+- command-based training and evaluation worker polling and execution
 - task logs and task artifact references
 - lineage event ingestion from Data-Juicer and MLflow-style producers
 - metadata queries over projected jobs, runs, datasets, dataset versions, and facets
 
-The backend is already opinionated toward the DJ-only V1 path.
+The backend is still primarily oriented toward the DJ-first V1 path, but it now
+also supports minimal command-based training and evaluation execution.
 
 ## 3. Core Mental Model
 
@@ -76,6 +79,8 @@ Implemented:
 - `dj-panel recipe publish`
 - `dj-panel run submit`
 - `dj-panel worker dj`
+- `dj-panel worker train`
+- `dj-panel worker eval`
 
 Implemented HTTP groups:
 
@@ -113,7 +118,7 @@ The request and response style is now intentionally camelCase at the API boundar
 
 ## 6. Current Worker Behavior
 
-The current worker model is DJ-specific:
+The current worker model has three concrete entry points:
 
 ```bash
 dj-panel worker dj \
@@ -125,7 +130,25 @@ dj-panel worker dj \
   --poll-interval 5
 ```
 
-Current behavior:
+```bash
+dj-panel worker train \
+  --workspace llm-team \
+  --worker-id train-node-01 \
+  --base-url http://127.0.0.1:8000 \
+  --workdir /tmp/dj-train-worker \
+  --poll-interval 5
+```
+
+```bash
+dj-panel worker eval \
+  --workspace llm-team \
+  --worker-id eval-node-01 \
+  --base-url http://127.0.0.1:8000 \
+  --workdir /tmp/dj-eval-worker \
+  --poll-interval 5
+```
+
+Current DJ behavior:
 
 - worker registers itself
 - worker heartbeats
@@ -135,6 +158,19 @@ Current behavior:
 - worker streams stdout/stderr to task logs
 - worker records the materialized config as a task artifact
 - worker marks task success or failure
+
+Current training/evaluation behavior:
+
+- worker registers itself
+- worker heartbeats
+- worker only claims `taskKind = training` or `taskKind = evaluation`
+- worker reads `command`, `workdir`, and `env` from submission-backed task payload
+- worker executes the command directly in the declared workdir
+- worker streams stdout/stderr to task logs
+- worker marks task success or failure
+
+This is intentionally the minimal command-based version. The backend does not yet
+manage training templates, evaluation templates, or structured parameter schemas.
 
 ## 7. Current CLI Usage
 
@@ -176,6 +212,26 @@ dj-panel run submit \
   --requested-by alice
 ```
 
+Submit training run:
+
+```bash
+dj-panel run submit \
+  --workspace llm-team \
+  --kind training \
+  --spec ./train_spec.yaml \
+  --requested-by alice
+```
+
+Submit evaluation run:
+
+```bash
+dj-panel run submit \
+  --workspace llm-team \
+  --kind evaluation \
+  --spec ./eval_spec.yaml \
+  --requested-by alice
+```
+
 Run DJ worker:
 
 ```bash
@@ -185,6 +241,28 @@ dj-panel worker dj \
   --base-url http://127.0.0.1:8000 \
   --workdir /tmp/dj-panel-worker \
   --dj-bin dj-process \
+  --poll-interval 5
+```
+
+Run training worker:
+
+```bash
+dj-panel worker train \
+  --workspace llm-team \
+  --worker-id train-node-01 \
+  --base-url http://127.0.0.1:8000 \
+  --workdir /tmp/dj-train-worker \
+  --poll-interval 5
+```
+
+Run evaluation worker:
+
+```bash
+dj-panel worker eval \
+  --workspace llm-team \
+  --worker-id eval-node-01 \
+  --base-url http://127.0.0.1:8000 \
+  --workdir /tmp/dj-eval-worker \
   --poll-interval 5
 ```
 
@@ -215,7 +293,9 @@ Not fully implemented yet:
 - no fine-grained auth or RBAC enforcement
 - no binary artifact storage service
 - no full workstation UI yet in this backend module
-- no dedicated training/evaluation orchestration yet
+- no training/evaluation template system yet
+- no structured hyperparameter schema management yet
+- no multi-stage pipeline orchestration across processing, training, and evaluation yet
 
 ## 10. Current Truth
 

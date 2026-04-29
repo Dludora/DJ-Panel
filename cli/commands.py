@@ -15,6 +15,7 @@ from cli.utils import (
     find_recipe_by_name,
     load_cli_config,
     load_json_arg,
+    load_structured_arg,
     recipe_payload,
     render_config,
     render_json,
@@ -225,27 +226,56 @@ def cmd_run_submit(args: argparse.Namespace) -> None:
     workspace = resolve_workspace(args, config)
     requested_by = resolve_user(args, config, attr='requested_by')
     parameters = load_json_arg(args.parameters)
+    submission_kind = args.kind
     with client(base_url) as http:
-        recipe_version_id = args.recipe_version_id
-        if not recipe_version_id:
-            if not args.recipe:
-                raise ValueError('run submit requires --recipe or --recipe-version-id')
-            recipe = find_recipe_by_name(http, workspace, args.recipe)
-            recipe_version_id = recipe['currentVersion']['id']
-        payload = {
-            'submissionKind': 'processing_pipeline',
-            'recipeVersionId': recipe_version_id,
-            'requestedBy': requested_by,
-            'parameters': parameters,
-            'inputs': [],
-            'outputs': [],
-        }
+        if submission_kind == 'processing_pipeline':
+            recipe_version_id = args.recipe_version_id
+            if not recipe_version_id:
+                if not args.recipe:
+                    raise ValueError('processing run submit requires --recipe or --recipe-version-id')
+                recipe = find_recipe_by_name(http, workspace, args.recipe)
+                recipe_version_id = recipe['currentVersion']['id']
+            payload = {
+                'submissionKind': submission_kind,
+                'recipeVersionId': recipe_version_id,
+                'requestedBy': requested_by,
+                'parameters': parameters,
+                'inputs': [],
+                'outputs': [],
+            }
+        else:
+            spec = load_structured_arg(args.spec)
+            if not spec:
+                raise ValueError('training/evaluation run submit requires --spec')
+            payload = {
+                'submissionKind': submission_kind,
+                'name': args.name or spec.get('name'),
+                'requestedBy': requested_by,
+                'parameters': parameters,
+                'spec': spec,
+                'inputs': spec.get('inputs', []),
+                'outputs': spec.get('outputs', []),
+            }
         response = http.post(f'/api/v1/workspaces/{workspace}/run-submissions', json=payload)
         response.raise_for_status()
         render(response.json(), json_output=args.json, human_renderer=render_submission)
 
 
 def cmd_worker_dj(args: argparse.Namespace) -> None:
+    config = load_cli_config()
+    args.base_url = resolve_base_url(args, config)
+    args.workspace = resolve_workspace(args, config)
+    run_worker_from_args(args)
+
+
+def cmd_worker_train(args: argparse.Namespace) -> None:
+    config = load_cli_config()
+    args.base_url = resolve_base_url(args, config)
+    args.workspace = resolve_workspace(args, config)
+    run_worker_from_args(args)
+
+
+def cmd_worker_eval(args: argparse.Namespace) -> None:
     config = load_cli_config()
     args.base_url = resolve_base_url(args, config)
     args.workspace = resolve_workspace(args, config)

@@ -17,7 +17,7 @@ how defaults are resolved.
 3. 团队协作层：管理工作空间与成员
 4. Recipe 管理层：导入、查看、发布 Data-Juicer recipe
 5. 运行提交层：基于 recipe version 创建一次 run submission
-6. Worker 执行层：启动 Data-Juicer worker，持续认领并执行任务
+6. Worker 执行层：启动 Data-Juicer、training、evaluation worker，持续认领并执行任务
 
 当前命令树如下：
 
@@ -42,7 +42,9 @@ dj-panel
 ├── run
 │   └── submit
 └── worker
-    └── dj
+    ├── dj
+    ├── train
+    └── eval
 ```
 
 ### 2. 顶层命令说明
@@ -302,20 +304,26 @@ dj-panel recipe publish ./config_lineage_v2.yaml --workspace llm-team --recipe l
 
 作用：
 - 创建一次 `run submission`
-- 它表示“用户希望平台基于某个 recipe version 发起一次处理运行”
+- 它表示“用户希望平台发起一次 processing、training 或 evaluation 运行”
 - 提交成功后，后端会基于 submission 展开可认领的 task
 
 常见参数：
 - `--workspace`
+- `--kind`：支持 `processing_pipeline`、`training`、`evaluation`
 - `--recipe`：用 recipe 当前版本提交
 - `--recipe-version-id`：直接指定版本
 - `--requested-by`
 - `--parameters`：JSON 字符串或 JSON 文件路径，会在 worker 物化 recipe 时合并到 `recipeBody`
+- `--spec`：YAML/JSON 对象或文件路径，用于 command-based `training` / `evaluation`
+- `--name`
 - `--json`
 
 注意：
-- `--recipe` 和 `--recipe-version-id` 至少要提供一个
-- 如果只提供 `--recipe`，CLI 会先查出该 recipe 的当前版本，再创建 submission
+- 当 `--kind processing_pipeline` 时：
+  需要 `--recipe` 或 `--recipe-version-id`
+- 当 `--kind training` 或 `--kind evaluation` 时：
+  需要 `--spec`
+- 如果 processing 只提供 `--recipe`，CLI 会先查出该 recipe 的当前版本，再创建 submission
 
 示例：
 
@@ -327,6 +335,42 @@ dj-panel run submit --workspace llm-team --recipe lineage_base --requested-by al
 
 ```bash
 dj-panel run submit --workspace llm-team --recipe lineage_base --parameters '{"dataset_path": "/data/raw/train.jsonl"}'
+```
+
+training 示例：
+
+```bash
+dj-panel run submit \
+  --workspace llm-team \
+  --kind training \
+  --spec ./train_spec.yaml \
+  --requested-by alice
+```
+
+evaluation 示例：
+
+```bash
+dj-panel run submit \
+  --workspace llm-team \
+  --kind evaluation \
+  --spec ./eval_spec.yaml \
+  --requested-by alice
+```
+
+`train_spec.yaml` 最小示例：
+
+```yaml
+name: qwen2-sft-v1
+command: python train.py --config train.yaml
+workdir: /mnt/team-repos/llm-trainer
+env:
+  MLFLOW_TRACKING_URI: http://127.0.0.1:5000
+  MLFLOW_EXPERIMENT_NAME: qwen2-sft
+timeoutSeconds: 7200
+inputs:
+  - uri: /data/processed/train.jsonl
+outputs:
+  - uri: /data/models/qwen2-sft-v1
 ```
 
 ### 6. Worker 执行层
@@ -382,6 +426,64 @@ dj-panel worker dj \
   --base-url http://127.0.0.1:8000 \
   --workdir /Users/dludora/Code/data-juicer \
   --dj-bin dj-process \
+  --poll-interval 5
+```
+
+#### `dj-panel worker train`
+
+作用：
+- 启动一个 command-based training worker
+- 注册 worker
+- 周期性上报 heartbeat
+- 认领 `training` 类型任务
+- 在 task 指定的 `workdir` 中直接执行 `command`
+- 持续上报 task log、任务状态
+
+常见参数：
+- `--base-url`
+- `--workspace`
+- `--worker-id`
+- `--display-name`
+- `--workdir`
+- `--poll-interval`
+
+示例：
+
+```bash
+dj-panel worker train \
+  --workspace llm-team \
+  --worker-id train-node-01 \
+  --base-url http://127.0.0.1:8000 \
+  --workdir /tmp/dj-train-worker \
+  --poll-interval 5
+```
+
+#### `dj-panel worker eval`
+
+作用：
+- 启动一个 command-based evaluation worker
+- 注册 worker
+- 周期性上报 heartbeat
+- 认领 `evaluation` 类型任务
+- 在 task 指定的 `workdir` 中直接执行 `command`
+- 持续上报 task log、任务状态
+
+常见参数：
+- `--base-url`
+- `--workspace`
+- `--worker-id`
+- `--display-name`
+- `--workdir`
+- `--poll-interval`
+
+示例：
+
+```bash
+dj-panel worker eval \
+  --workspace llm-team \
+  --worker-id eval-node-01 \
+  --base-url http://127.0.0.1:8000 \
+  --workdir /tmp/dj-eval-worker \
   --poll-interval 5
 ```
 
@@ -483,6 +585,24 @@ dj-panel worker dj --worker-id dj-node-01 --workdir /tmp/dj-worker --poll-interv
 dj-panel web --backend-url http://127.0.0.1:8000
 ```
 
+典型 command-based training 使用流程如下：
+
+1. 准备训练脚本和工作目录
+2. 编写 `train_spec.yaml`
+3. 提交训练任务
+
+```bash
+dj-panel run submit --workspace llm-team --kind training --spec ./train_spec.yaml --requested-by alice
+```
+
+4. 启动 training worker
+
+```bash
+dj-panel worker train --workspace llm-team --worker-id train-node-01 --workdir /tmp/dj-train-worker --poll-interval 5
+```
+
+5. 通过 task logs 观察训练输出
+
 ### 10. 当前边界
 
 当前已覆盖：
@@ -492,12 +612,15 @@ dj-panel web --backend-url http://127.0.0.1:8000
 - recipe 导入与版本发布
 - run submission 创建
 - Data-Juicer worker 执行
+- command-based training worker 执行
+- command-based evaluation worker 执行
 
 当前 CLI 还没有覆盖得很完整的内容：
 - 更丰富的 run submission 查询与管理命令
 - 手动 task 运维命令
 - lineage 数据查询命令
-- 训练、评测等非 DJ worker 类型
+- training/evaluation template 管理
+- 结构化训练参数管理
 
 ---
 
@@ -513,7 +636,7 @@ It currently covers six layers:
 3. Collaboration layer: manage workspaces and members
 4. Recipe layer: import, inspect, and publish Data-Juicer recipes
 5. Submission layer: create a run submission from a recipe version
-6. Worker execution layer: run a Data-Juicer worker that claims and executes tasks
+6. Worker execution layer: run Data-Juicer, training, or evaluation workers that claim and execute tasks
 
 The current command tree is:
 
@@ -538,7 +661,9 @@ dj-panel
 ├── run
 │   └── submit
 └── worker
-    └── dj
+    ├── dj
+    ├── train
+    └── eval
 ```
 
 ### 2. Top-Level Commands
@@ -799,20 +924,26 @@ dj-panel recipe publish ./config_lineage_v2.yaml --workspace llm-team --recipe l
 
 Purpose:
 - Create a `run submission`
-- It represents a user request for the platform to launch one processing run from a recipe version
+- It represents a user request for the platform to launch one processing, training, or evaluation run
 - After creation, the backend expands the submission into a claimable task
 
 Common arguments:
 - `--workspace`
+- `--kind`: supports `processing_pipeline`, `training`, and `evaluation`
 - `--recipe`: submit using the recipe's current version
 - `--recipe-version-id`: submit using a specific version directly
 - `--requested-by`
 - `--parameters`: a JSON string or path to a JSON file; merged into `recipeBody` when the worker materializes the recipe
+- `--spec`: YAML/JSON object or file path for command-based `training` / `evaluation`
+- `--name`
 - `--json`
 
 Notes:
-- At least one of `--recipe` or `--recipe-version-id` must be provided
-- If only `--recipe` is provided, the CLI resolves the recipe's current version before creating the submission
+- When `--kind processing_pipeline` is used:
+  one of `--recipe` or `--recipe-version-id` must be provided
+- When `--kind training` or `--kind evaluation` is used:
+  `--spec` is required
+- If processing only provides `--recipe`, the CLI resolves the recipe's current version before creating the submission
 
 Example:
 
@@ -824,6 +955,42 @@ Example with parameter overrides:
 
 ```bash
 dj-panel run submit --workspace llm-team --recipe lineage_base --parameters '{"dataset_path": "/data/raw/train.jsonl"}'
+```
+
+Training example:
+
+```bash
+dj-panel run submit \
+  --workspace llm-team \
+  --kind training \
+  --spec ./train_spec.yaml \
+  --requested-by alice
+```
+
+Evaluation example:
+
+```bash
+dj-panel run submit \
+  --workspace llm-team \
+  --kind evaluation \
+  --spec ./eval_spec.yaml \
+  --requested-by alice
+```
+
+Minimal `train_spec.yaml` example:
+
+```yaml
+name: qwen2-sft-v1
+command: python train.py --config train.yaml
+workdir: /mnt/team-repos/llm-trainer
+env:
+  MLFLOW_TRACKING_URI: http://127.0.0.1:5000
+  MLFLOW_EXPERIMENT_NAME: qwen2-sft
+timeoutSeconds: 7200
+inputs:
+  - uri: /data/processed/train.jsonl
+outputs:
+  - uri: /data/models/qwen2-sft-v1
 ```
 
 ### 6. Worker Execution Layer
@@ -879,6 +1046,64 @@ dj-panel worker dj \
   --base-url http://127.0.0.1:8000 \
   --workdir /Users/dludora/Code/data-juicer \
   --dj-bin dj-process \
+  --poll-interval 5
+```
+
+#### `dj-panel worker train`
+
+Purpose:
+- Start a command-based training worker
+- Register the worker
+- Send periodic heartbeats
+- Claim tasks of type `training`
+- Execute the task `command` directly in the declared `workdir`
+- Report task logs and task transitions back to the backend
+
+Common arguments:
+- `--base-url`
+- `--workspace`
+- `--worker-id`
+- `--display-name`
+- `--workdir`
+- `--poll-interval`
+
+Example:
+
+```bash
+dj-panel worker train \
+  --workspace llm-team \
+  --worker-id train-node-01 \
+  --base-url http://127.0.0.1:8000 \
+  --workdir /tmp/dj-train-worker \
+  --poll-interval 5
+```
+
+#### `dj-panel worker eval`
+
+Purpose:
+- Start a command-based evaluation worker
+- Register the worker
+- Send periodic heartbeats
+- Claim tasks of type `evaluation`
+- Execute the task `command` directly in the declared `workdir`
+- Report task logs and task transitions back to the backend
+
+Common arguments:
+- `--base-url`
+- `--workspace`
+- `--worker-id`
+- `--display-name`
+- `--workdir`
+- `--poll-interval`
+
+Example:
+
+```bash
+dj-panel worker eval \
+  --workspace llm-team \
+  --worker-id eval-node-01 \
+  --base-url http://127.0.0.1:8000 \
+  --workdir /tmp/dj-eval-worker \
   --poll-interval 5
 ```
 
@@ -980,6 +1205,24 @@ dj-panel worker dj --worker-id dj-node-01 --workdir /tmp/dj-worker --poll-interv
 dj-panel web --backend-url http://127.0.0.1:8000
 ```
 
+A typical command-based training flow looks like this:
+
+1. Prepare the training script and working directory
+2. Write `train_spec.yaml`
+3. Submit the training task
+
+```bash
+dj-panel run submit --workspace llm-team --kind training --spec ./train_spec.yaml --requested-by alice
+```
+
+4. Start the training worker
+
+```bash
+dj-panel worker train --workspace llm-team --worker-id train-node-01 --workdir /tmp/dj-train-worker --poll-interval 5
+```
+
+5. Inspect training output through task logs
+
 ### 10. Current Boundaries
 
 The CLI already covers:
@@ -989,9 +1232,12 @@ The CLI already covers:
 - recipe import and version publishing
 - run submission creation
 - Data-Juicer worker execution
+- command-based training worker execution
+- command-based evaluation worker execution
 
 The CLI does not yet fully cover:
 - richer run submission inspection and management commands
 - manual task operations
 - lineage query commands
-- non-DJ worker types such as training or evaluation
+- training/evaluation template management
+- structured training parameter management

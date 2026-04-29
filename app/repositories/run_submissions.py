@@ -17,10 +17,13 @@ class RunSubmissionRepository:
         self,
         conn: Connection,
         workspace_id: str,
-        recipe_id: str,
-        recipe_version_id: str,
+        recipe_id: str | None,
+        recipe_version_id: str | None,
+        name: str | None,
         requested_by: str,
+        submission_kind: str,
         parameters: dict,
+        spec: dict,
     ) -> RunSubmissionRow:
         run_id = new_id()
         now = utc_now()
@@ -30,9 +33,12 @@ class RunSubmissionRepository:
                 workspace_id=workspace_id,
                 recipe_id=recipe_id,
                 recipe_version_id=recipe_version_id,
+                name=name,
                 requested_by=requested_by,
+                submission_kind=submission_kind,
                 status=RunSubmissionStatus.PENDING.value,
                 parameters=parameters,
+                spec=spec,
                 created_at=now,
             )
         )
