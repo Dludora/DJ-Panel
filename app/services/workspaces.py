@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from sqlalchemy.engine import Engine
 
-from app.models.api.control_plane import (
+from app.models.api import (
     WorkspaceMemberResponse,
     WorkspaceMembersResponse,
     WorkspaceResponse,

@@ -8,27 +8,38 @@ from typing import Any
 
 import httpx
 import yaml
+from app.config import get_settings
+from app.execution.definitions import DEFAULT_DJ_BIN, DEFAULT_DJ_COMMAND
+from app.models.api import RecipeCreateRequest, RecipeVersionCreateRequest
+from app.models.constant import TaskKind
 
-
-DEFAULT_BASE_URL = "http://127.0.0.1:8000"
-DEFAULT_DJ_COMMAND = "dj-process --config recipe.yaml"
-CONFIG_PATH = Path.home() / ".config" / "dj-panel" / "config.json"
+DEFAULT_BASE_URL = get_settings().base_url
+DEFAULT_DJ_EXECUTION_SPEC = {
+    "taskKind": TaskKind.DJ_RECIPE.value,
+    "executor": DEFAULT_DJ_BIN,
+    "configMode": "materialize_local_config",
+}
 
 
 def client(base_url: str) -> httpx.Client:
-    return httpx.Client(base_url=normalize_base_url(base_url), timeout=30.0)
+    return httpx.Client(
+        base_url=normalize_base_url(base_url),
+        timeout=get_settings().http_timeout_seconds,
+    )
 
 
 def load_cli_config() -> dict[str, Any]:
-    if not CONFIG_PATH.exists():
+    config_path = get_settings().cli_config_path_obj
+    if not config_path.exists():
         return {}
-    payload = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
     return payload if isinstance(payload, dict) else {}
 
 
 def save_cli_config(payload: dict[str, Any]) -> None:
-    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    CONFIG_PATH.write_text(
+    config_path = get_settings().cli_config_path_obj
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
     )
 
@@ -53,7 +64,9 @@ def normalize_base_url(raw_url: str) -> str:
 
 
 def resolve_base_url(args: argparse.Namespace, config: dict[str, Any]) -> str:
-    raw_url = getattr(args, "base_url", None) or config.get("base_url") or DEFAULT_BASE_URL
+    raw_url = (
+        getattr(args, "base_url", None) or config.get("base_url") or DEFAULT_BASE_URL
+    )
     return normalize_base_url(raw_url)
 
 
@@ -112,6 +125,50 @@ def load_structured_arg(raw: str | None) -> dict[str, Any]:
     return payload
 
 
+def load_env_file(path: Path) -> dict[str, str]:
+    resolved = path.expanduser()
+    text = resolved.read_text(encoding="utf-8")
+    if resolved.suffix.lower() in {".json", ".yaml", ".yml"}:
+        payload = yaml.safe_load(text)
+        if payload is None:
+            return {}
+        if not isinstance(payload, dict):
+            raise ValueError("env file must contain an object mapping")
+        return {str(key): str(value) for key, value in payload.items()}
+
+    env: dict[str, str] = {}
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            raise ValueError(f"invalid env line {raw_line!r}; expected KEY=VALUE")
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if not key:
+            raise ValueError(f"invalid env line {raw_line!r}; missing key")
+        env[key] = value
+    return env
+
+
+def load_env_overrides(
+    env_items: list[str] | None = None, env_files: list[str] | None = None
+) -> dict[str, str]:
+    env: dict[str, str] = {}
+    for raw_file in env_files or []:
+        env.update(load_env_file(Path(raw_file)))
+
+    for raw_item in env_items or []:
+        if "=" not in raw_item:
+            raise ValueError(f"invalid --env value {raw_item!r}; expected KEY=VALUE")
+        key, value = raw_item.split("=", 1)
+        key = key.strip()
+        if not key:
+            raise ValueError(f"invalid --env value {raw_item!r}; missing key")
+        env[key] = value
+    return env
+
+
 def load_recipe_body(path: Path) -> dict[str, Any]:
     payload = yaml.safe_load(path.read_text(encoding="utf-8"))
     if payload is None:
@@ -128,7 +185,7 @@ def default_recipe_name(path: Path, recipe_body: dict[str, Any]) -> str:
     return path.stem
 
 
-def recipe_payload(
+def build_recipe_create_request(
     *,
     file: Path,
     name: str | None,
@@ -137,29 +194,55 @@ def recipe_payload(
     recipe_command_line: str,
     timeout_seconds: int,
     extra_execution_spec: str | None,
-) -> dict[str, Any]:
+) -> RecipeCreateRequest:
     recipe_body = load_recipe_body(file.expanduser())
     recipe_path = file.expanduser().resolve()
-    execution_spec = {
-        "taskKind": "dj_recipe",
-        "executor": "dj-process",
-        "configMode": "materialize_local_config",
-    }
+    execution_spec = dict(DEFAULT_DJ_EXECUTION_SPEC)
     if extra_execution_spec:
         execution_spec.update(json.loads(extra_execution_spec))
     resolved_name = name or default_recipe_name(recipe_path, recipe_body)
-    return {
-        "name": resolved_name,
-        "description": description,
-        "ownerName": owner,
-        "recipeBody": recipe_body,
-        "command": recipe_command_line,
-        "scriptPath": str(recipe_path),
-        "parameterSchema": {},
-        "envTemplate": {},
-        "executionSpec": execution_spec,
-        "timeoutSeconds": timeout_seconds,
-    }
+    return RecipeCreateRequest(
+        name=resolved_name,
+        description=description,
+        ownerName=owner,
+        recipeBody=recipe_body,
+        command=recipe_command_line,
+        scriptPath=str(recipe_path),
+        parameterSchema={},
+        envTemplate={},
+        executionSpec=execution_spec,
+        timeoutSeconds=timeout_seconds,
+    )
+
+
+def build_recipe_version_request(
+    *,
+    file: Path,
+    description: str,
+    owner: str,
+    recipe_command_line: str,
+    timeout_seconds: int,
+    extra_execution_spec: str | None,
+) -> RecipeVersionCreateRequest:
+    recipe_request = build_recipe_create_request(
+        file=file,
+        name=None,
+        description=description,
+        owner=owner,
+        recipe_command_line=recipe_command_line,
+        timeout_seconds=timeout_seconds,
+        extra_execution_spec=extra_execution_spec,
+    )
+    return RecipeVersionCreateRequest(
+        createdBy=owner,
+        recipeBody=recipe_request.recipe_body,
+        command=recipe_request.command,
+        scriptPath=recipe_request.script_path,
+        parameterSchema=recipe_request.parameter_schema,
+        envTemplate=recipe_request.env_template,
+        executionSpec=recipe_request.execution_spec,
+        timeoutSeconds=recipe_request.timeout_seconds,
+    )
 
 
 def find_recipe_by_name(

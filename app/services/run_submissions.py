@@ -4,7 +4,8 @@ from typing import Optional
 
 from sqlalchemy.engine import Engine
 
-from app.models.api.control_plane import RunSubmissionResponse, RunSubmissionsResponse
+from app.models.api import RunSubmissionResponse, RunSubmissionsResponse
+from app.models.constant import RunSubmissionKind, TaskKind
 from app.repositories.recipes import RecipeRepository
 from app.repositories.run_submissions import RunSubmissionRepository
 from app.repositories.tasks import TaskRepository
@@ -25,7 +26,10 @@ class RunSubmissionService:
             if not workspace:
                 raise ValueError("workspace not found")
 
-            if payload.submission_kind in {"training", "evaluation"}:
+            if payload.submission_kind in {
+                RunSubmissionKind.TRAINING,
+                RunSubmissionKind.EVALUATION,
+            }:
                 submission = self._create_command_submission(conn, workspace.id, payload)
                 return {"submission": self._response(submission).to_api_dict()}
 
@@ -51,10 +55,15 @@ class RunSubmissionService:
                 requested_by=payload.requested_by,
                 submission_kind=payload.submission_kind,
                 parameters=payload.parameters,
-                spec={},
+                spec=payload.spec or {},
             )
 
-            env_vars = {**(version.env_template or {}), **(payload.parameters or {})}
+            submission_env = dict((payload.spec or {}).get("env") or {})
+            env_vars = {
+                **(version.env_template or {}),
+                **(payload.parameters or {}),
+                **submission_env,
+            }
             self.task_repo.create_task(
                 conn,
                 workspace_id=workspace.id,
@@ -68,7 +77,9 @@ class RunSubmissionService:
                     "recipeBody": version.recipe_body,
                 },
                 timeout_seconds=version.timeout_seconds,
-                task_kind=(version.execution_spec or {}).get("taskKind", "dj_recipe"),
+                task_kind=(version.execution_spec or {}).get(
+                    "taskKind", TaskKind.DJ_RECIPE.value
+                ),
             )
 
             return {"submission": self._response(submission).to_api_dict()}
@@ -148,6 +159,6 @@ class RunSubmissionService:
                 "outputs": payload.outputs,
             },
             timeout_seconds=timeout_seconds,
-            task_kind=payload.submission_kind,
+            task_kind=payload.submission_kind.value,
         )
         return submission

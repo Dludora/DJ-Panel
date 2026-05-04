@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 
 from app.api.dependencies import get_recipe_service
 from app.api.errors import not_found
-from app.models.api.control_plane import (
+from app.models.api import (
     RecipeCreateRequest,
     RecipeVersionCreateRequest,
 )

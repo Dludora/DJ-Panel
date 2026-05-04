@@ -26,11 +26,13 @@ If you are new to the project, read in this order:
    Read this for the scoped V1 Data-Juicer product design.
 4. [CLI_REFERENCE.md](./CLI_REFERENCE.md)
    Use this when working on `dj-panel` commands, CLI defaults, or operator workflows.
-5. [V1_API_OPENAPI_STYLE.md](./V1_API_OPENAPI_STYLE.md)
+5. [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md)
+   Use this when configuring runtime defaults, deployment environments, or operator startup scripts.
+6. [V1_API_OPENAPI_STYLE.md](./V1_API_OPENAPI_STYLE.md)
    Use this when working on frontend-backend contracts or CLI-facing resource shapes.
-6. [DATABASE_SCHEMA_DRAFT.md](./DATABASE_SCHEMA_DRAFT.md)
+7. [DATABASE_SCHEMA_DRAFT.md](./DATABASE_SCHEMA_DRAFT.md)
    Use this when changing persistence or reasoning about data ownership.
-7. [DJ_WORKER_PAYLOAD_AND_SEQUENCE.md](./DJ_WORKER_PAYLOAD_AND_SEQUENCE.md)
+8. [DJ_WORKER_PAYLOAD_AND_SEQUENCE.md](./DJ_WORKER_PAYLOAD_AND_SEQUENCE.md)
    Use this when changing worker execution or task claim payloads.
 
 ## Document Boundaries
@@ -119,6 +121,27 @@ Use it when:
 - onboarding someone to the CLI
 - adding or refactoring CLI commands
 - checking how a user is expected to operate the backend from the terminal
+
+### [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md)
+
+What it covers:
+
+- all supported runtime environment variables
+- default values and aliases
+- which subsystem uses each variable
+- precedence between CLI args, local CLI config, and environment
+
+What it does not cover:
+
+- route-by-route API behavior
+- deep schema ownership decisions
+- worker execution sequence details
+
+Use it when:
+
+- preparing local `.env` files
+- deploying backend or workers
+- removing hardcoded defaults from code
 
 ### [V1_API_OPENAPI_STYLE.md](./V1_API_OPENAPI_STYLE.md)
 

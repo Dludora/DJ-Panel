@@ -21,7 +21,7 @@ from app.db.schema import (
     run_outputs,
     runs,
 )
-from app.db.rows.lineage import (
+from app.db.rows import (
     AssetRow,
     AssetVersionRow,
     JobRow,
@@ -29,8 +29,8 @@ from app.db.rows.lineage import (
     NamespaceRow,
     RunRow,
 )
-from app.models.types.lineage import DatasetLifecycleState, JobVersionIOType
-from app.models.schemas.openlineage import DatasetRef, RunEventType
+from app.models.constant import DatasetLifecycleState, JobVersionIOType
+from app.models.protocols.openlineage import DatasetRef, RunEventType
 from app.repositories.utils import new_id, utc_now
 
 

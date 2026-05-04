@@ -38,10 +38,10 @@ Then use the focused design documents in `docs/`:
 
 - `app/main.py`: FastAPI entrypoint
 - `app/api/routes/`: HTTP routes by domain (`lineage`, `metadata`, `workspaces`, `recipes`, `run_submissions`, `workers`, `tasks`)
-- `app/models/api/`: Pydantic request and response DTOs
-- `app/models/schemas/`: external protocol schemas such as OpenLineage
-- `app/models/types/`: shared enum and value types
-- `app/db/rows/`: typed row mirrors for tables defined in `app/db/schema.py`
+- `app/models/api.py`: Pydantic request and response DTOs
+- `app/models/protocols/`: external protocol schemas such as OpenLineage
+- `app/models/constant.py`: shared enums and constant mappings
+- `app/db/rows.py`: typed row mirrors for tables defined in `app/db/schema.py`
 - `app/repositories/`: SQLAlchemy Core persistence by domain
 - `app/services/`: orchestration layer that combines repositories into API behavior
 - `app/db/schema.py`: canonical merged table definitions for control-plane plus lineage and metadata
@@ -59,7 +59,7 @@ Included:
 - run-submission create/list/detail
 - task list/detail, claim, start, complete, fail, cancel
 - worker register/list/heartbeat
-- task logs and artifact references
+- execution log file artifacts and other artifact references
 - fields for OpenLineage and MLflow run linkage
 - OpenLineage event ingestion
 - raw lineage event storage
@@ -84,5 +84,5 @@ Not yet included:
 - claim is pull-based and atomic at the database write level
 - workspace is the main isolation boundary
 - lineage projection is event-driven and independent from task state transitions
-- the merged schema uses PostgreSQL-first JSON handling through `JSONB` variants
+- the merged schema uses cross-dialect `SQLAlchemy JSON`
 - the default local connection string is `postgresql+psycopg:///dj_panel`

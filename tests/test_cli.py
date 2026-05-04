@@ -5,12 +5,14 @@ from pathlib import Path
 import pytest
 
 from cli import (
+    DEFAULT_DJ_EXECUTION_SPEC,
     DEFAULT_DJ_COMMAND,
+    _build_recipe_create_request,
+    _load_env_overrides,
     _load_json_arg,
     _load_recipe_body,
     _load_structured_arg,
     _normalize_base_url,
-    _recipe_payload,
     _render_config,
     _render_recipe_list,
 )
@@ -24,7 +26,7 @@ def test_load_recipe_body_requires_yaml_mapping(tmp_path: Path) -> None:
         _load_recipe_body(recipe_path)
 
 
-def test_recipe_payload_defaults_to_datajuicer_task(tmp_path: Path) -> None:
+def test_build_recipe_create_request_defaults_to_datajuicer_task(tmp_path: Path) -> None:
     recipe_path = tmp_path / 'cleaning.yaml'
     recipe_path.write_text(
         'project_name: sft-cleaning\n'
@@ -33,7 +35,7 @@ def test_recipe_payload_defaults_to_datajuicer_task(tmp_path: Path) -> None:
         encoding='utf-8',
     )
 
-    payload = _recipe_payload(
+    request = _build_recipe_create_request(
         file=recipe_path,
         name=None,
         description='clean data',
@@ -43,12 +45,11 @@ def test_recipe_payload_defaults_to_datajuicer_task(tmp_path: Path) -> None:
         extra_execution_spec=None,
     )
 
-    assert payload['name'] == 'sft-cleaning'
-    assert payload['ownerName'] == 'alice'
-    assert payload['command'] == 'dj-process --config recipe.yaml'
-    assert payload['scriptPath'] == str(recipe_path.resolve())
-    assert payload['executionSpec']['taskKind'] == 'dj_recipe'
-    assert payload['executionSpec']['configMode'] == 'materialize_local_config'
+    assert request.name == 'sft-cleaning'
+    assert request.owner_name == 'alice'
+    assert request.command == 'dj-process --config recipe.yaml'
+    assert request.script_path == str(recipe_path.resolve())
+    assert request.execution_spec == DEFAULT_DJ_EXECUTION_SPEC
 
 
 def test_load_json_arg_accepts_inline_json_and_file(tmp_path: Path) -> None:
@@ -73,6 +74,24 @@ def test_load_structured_arg_accepts_yaml_file(tmp_path: Path) -> None:
         'name': 'qwen2-sft-v1',
         'command': 'python train.py --config train.yaml',
         'workdir': '/tmp/llm-trainer',
+    }
+
+
+def test_load_env_overrides_merges_file_and_inline_values(tmp_path: Path) -> None:
+    env_path = tmp_path / 'train.env'
+    env_path.write_text(
+        'MLFLOW_TRACKING_URI=http://127.0.0.1:5000\n'
+        'MLFLOW_EXPERIMENT_NAME=qwen2-sft\n',
+        encoding='utf-8',
+    )
+
+    assert _load_env_overrides(
+        ['MLFLOW_EXPERIMENT_NAME=qwen2-sft-v2', 'CUDA_VISIBLE_DEVICES=0'],
+        [str(env_path)],
+    ) == {
+        'MLFLOW_TRACKING_URI': 'http://127.0.0.1:5000',
+        'MLFLOW_EXPERIMENT_NAME': 'qwen2-sft-v2',
+        'CUDA_VISIBLE_DEVICES': '0',
     }
 
 
@@ -126,6 +145,8 @@ def test_run_submit_help_is_available(capsys: pytest.CaptureFixture[str], monkey
     assert '--recipe-version-id' in output
     assert '--parameters' in output
     assert '--spec' in output
+    assert '--env' in output
+    assert '--env-file' in output
 
 
 def test_recipe_list_and_show_help_are_available(

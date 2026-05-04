@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from sqlalchemy.engine import Engine
 
-from app.models.api.ingestion import IngestionResult
-from app.models.schemas.openlineage import (
+from app.models.protocols.openlineage import (
     DatasetEvent,
     JobEvent,
     OpenLineageEvent,
@@ -12,6 +13,11 @@ from app.models.schemas.openlineage import (
 )
 from app.repositories.lineage_events import LineageEventRepository
 from app.repositories.projection import ProjectionRepository
+
+
+@dataclass(frozen=True)
+class IngestionResult:
+    projected: bool
 
 
 class IngestionService:

@@ -135,13 +135,6 @@ def test_control_plane_happy_path() -> None:
         assert start_response.json()['status'] == 'RUNNING'
         assert start_response.json()['currentAttempt']['openlineageRunId'] == 'ol-run-1'
 
-        log_response = client.post(
-            f'/api/v1/task-attempts/{attempt_id}/logs',
-            json={'stream': 'STDOUT', 'message': 'hello world', 'sequence': 1},
-        )
-        log_response.raise_for_status()
-        assert log_response.json()['stream'] == 'STDOUT'
-
         artifact_response = client.post(
             f'/api/v1/task-attempts/{attempt_id}/artifacts',
             json={

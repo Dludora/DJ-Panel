@@ -22,9 +22,11 @@ def get_engine() -> Engine:
         connect_args=connect_args,
     )
     if database_url.startswith("sqlite"):
+
         @event.listens_for(engine, "connect")
         def _set_sqlite_pragma(dbapi_connection, connection_record) -> None:  # type: ignore[no-untyped-def]
             cursor = dbapi_connection.cursor()
             cursor.execute("PRAGMA foreign_keys=ON")
             cursor.close()
+
     return engine

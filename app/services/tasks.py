@@ -3,18 +3,21 @@ from __future__ import annotations
 from sqlalchemy.engine import Engine
 from typing import Optional
 
-from app.models.api.control_plane import (
+from app.models.api import (
     TaskArtifactResponse,
     TaskArtifactsResponse,
     TaskAttemptResponse,
     TaskClaimPayload,
     TaskClaimResponse,
-    TaskLogResponse,
-    TaskLogsResponse,
     TaskResponse,
     TasksResponse,
 )
-from app.models.types.control_plane import RunSubmissionStatus, TaskAttemptStatus, TaskStatus
+from app.models.constant import (
+    RunSubmissionStatus,
+    TaskAttemptStatus,
+    TaskKind,
+    TaskStatus,
+)
 from app.repositories.recipes import RecipeRepository
 from app.repositories.run_submissions import RunSubmissionRepository
 from app.repositories.tasks import TaskRepository
@@ -35,29 +38,44 @@ class TaskService:
         with self.engine.begin() as conn:
             workspace = self.workspace_repo.get_by_slug(conn, workspace_slug)
             if not workspace:
-                raise ValueError('workspace not found')
+                raise ValueError("workspace not found")
             tasks = self.task_repo.list_tasks(conn, workspace.id)
-            return TasksResponse(tasks=[self._task_response(conn, task) for task in tasks]).to_api_dict()
+            return TasksResponse(
+                tasks=[self._task_response(conn, task) for task in tasks]
+            ).to_api_dict()
 
     def get_task(self, task_id: str) -> Optional[dict]:
         with self.engine.begin() as conn:
             task = self.task_repo.get_task_by_id(conn, task_id)
             return self._task_response(conn, task).to_api_dict() if task else None
 
-    def claim_task(self, workspace_slug: str, worker_id: str, supported_task_kinds: list[str] | None = None) -> dict:
+    def claim_task(
+        self,
+        workspace_slug: str,
+        worker_id: str,
+        supported_task_kinds: list[TaskKind] | None = None,
+    ) -> dict:
         with self.engine.begin() as conn:
             workspace = self.workspace_repo.get_by_slug(conn, workspace_slug)
             if not workspace:
-                raise ValueError('workspace not found')
+                raise ValueError("workspace not found")
             worker = self.worker_repo.get_worker_by_id(conn, worker_id)
             if not worker or worker.workspace_id != workspace.id:
-                raise ValueError('worker not found in workspace')
-            claimed = self.task_repo.claim_next_task(conn, workspace.id, worker_id, supported_task_kinds)
+                raise ValueError("worker not found in workspace")
+            claimed = self.task_repo.claim_next_task(
+                conn, workspace.id, worker_id, supported_task_kinds
+            )
             if not claimed:
                 return TaskClaimResponse(claimed=False, task=None).to_api_dict()
             task, attempt = claimed
-            version = self.recipe_repo.get_recipe_version_by_id(conn, task.recipe_version_id) if task.recipe_version_id else None
-            submission = self.submission_repo.get_run_submission_by_id(conn, task.run_submission_id)
+            version = (
+                self.recipe_repo.get_recipe_version_by_id(conn, task.recipe_version_id)
+                if task.recipe_version_id
+                else None
+            )
+            submission = self.submission_repo.get_run_submission_by_id(
+                conn, task.run_submission_id
+            )
             payload = TaskClaimPayload(
                 taskId=task.id,
                 attemptId=attempt.id,
@@ -70,7 +88,9 @@ class TaskService:
                 command=task.command,
                 timeoutSeconds=task.timeout_seconds,
             )
-            self.submission_repo.update_run_submission_status(conn, task.run_submission_id, RunSubmissionStatus.CLAIMED.value)
+            self.submission_repo.update_run_submission_status(
+                conn, task.run_submission_id, RunSubmissionStatus.CLAIMED.value
+            )
             return TaskClaimResponse(claimed=True, task=payload).to_api_dict()
 
     def start_task(self, task_id: str, payload) -> dict:
@@ -160,17 +180,6 @@ class TaskService:
             )
             return self._task_response(conn, task, attempt).to_api_dict()
 
-    def create_log(self, attempt_id: str, payload) -> dict:
-        with self.engine.begin() as conn:
-            attempt = self.task_repo.update_attempt_heartbeat(conn, attempt_id)
-            log = self.task_repo.create_task_log(conn, attempt.id, payload.stream, payload.message, payload.sequence)
-            return TaskLogResponse(**log).to_api_dict()
-
-    def list_logs(self, attempt_id: str) -> dict:
-        with self.engine.begin() as conn:
-            logs = self.task_repo.list_task_logs(conn, attempt_id)
-            return TaskLogsResponse(logs=[TaskLogResponse(**log) for log in logs]).to_api_dict()
-
     def create_artifact(self, attempt_id: str, payload) -> dict:
         with self.engine.begin() as conn:
             attempt = self.task_repo.update_attempt_heartbeat(conn, attempt_id)
@@ -190,10 +199,16 @@ class TaskService:
     def list_artifacts(self, attempt_id: str) -> dict:
         with self.engine.begin() as conn:
             artifacts = self.task_repo.list_task_artifacts(conn, attempt_id)
-            return TaskArtifactsResponse(artifacts=[TaskArtifactResponse(**artifact) for artifact in artifacts]).to_api_dict()
+            return TaskArtifactsResponse(
+                artifacts=[TaskArtifactResponse(**artifact) for artifact in artifacts]
+            ).to_api_dict()
 
     def _task_response(self, conn, task, attempt=None) -> TaskResponse:
-        attempt = attempt or (self.task_repo.get_attempt_by_id(conn, task.current_attempt_id) if task.current_attempt_id else None)
+        attempt = attempt or (
+            self.task_repo.get_attempt_by_id(conn, task.current_attempt_id)
+            if task.current_attempt_id
+            else None
+        )
         return TaskResponse(
             id=task.id,
             workspaceId=task.workspace_id,
@@ -222,28 +237,28 @@ class TaskService:
     def _submission_payload(submission, task) -> dict:
         if not submission:
             return {
-                'id': task.run_submission_id,
-                'workspaceId': task.workspace_id,
-                'submissionKind': task.task_kind,
-                'parameters': {},
-                'spec': {},
+                "id": task.run_submission_id,
+                "workspaceId": task.workspace_id,
+                "submissionKind": task.task_kind,
+                "parameters": {},
+                "spec": {},
             }
         return {
-            'id': submission.id,
-            'workspaceId': submission.workspace_id,
-            'recipeId': submission.recipe_id,
-            'recipeVersionId': submission.recipe_version_id,
-            'name': submission.name,
-            'requestedBy': submission.requested_by,
-            'submissionKind': submission.submission_kind,
-            'status': submission.status,
-            'parameters': submission.parameters,
-            'spec': submission.spec,
-            'rootLineageNodeId': submission.root_lineage_node_id,
-            'createdAt': submission.created_at,
-            'startedAt': submission.started_at,
-            'endedAt': submission.ended_at,
-            'failureReason': submission.failure_reason,
+            "id": submission.id,
+            "workspaceId": submission.workspace_id,
+            "recipeId": submission.recipe_id,
+            "recipeVersionId": submission.recipe_version_id,
+            "name": submission.name,
+            "requestedBy": submission.requested_by,
+            "submissionKind": submission.submission_kind,
+            "status": submission.status,
+            "parameters": submission.parameters,
+            "spec": submission.spec,
+            "rootLineageNodeId": submission.root_lineage_node_id,
+            "createdAt": submission.created_at,
+            "startedAt": submission.started_at,
+            "endedAt": submission.ended_at,
+            "failureReason": submission.failure_reason,
         }
 
     @staticmethod
@@ -266,7 +281,7 @@ class TaskService:
 
     @staticmethod
     def _recipe_version_response(version):
-        from app.models.api.control_plane import RecipeVersionResponse
+        from app.models.api import RecipeVersionResponse
 
         if version is None:
             return None

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 
 from app.api.dependencies import get_run_submission_service
 from app.api.errors import not_found
-from app.models.api.control_plane import RunSubmissionCreateRequest
+from app.models.api import RunSubmissionCreateRequest
 from app.services.run_submissions import RunSubmissionService
 
 router = APIRouter(prefix="/api/v1", tags=["run-submissions"])

@@ -7,8 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.engine import Engine
 
 from app.db.schema import assets, jobs
-from app.models.api.lineage_graph import Edge, LineageResponse, Node
-from app.models.types.lineage import JobVersionIOType
+from app.models.api import Edge, LineageResponse, Node
+from app.models.constant import JobVersionIOType
 from app.repositories.lineage_query import LineageQueryRepository
 from app.repositories.metadata import MetadataRepository
 

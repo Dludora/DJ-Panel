@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.db.session import get_engine
+from app.db.engine import get_engine
 from app.services.ingestion import IngestionService
 from app.services.lineage_query import LineageQueryService
 from app.services.metadata import MetadataService

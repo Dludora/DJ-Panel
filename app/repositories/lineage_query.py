@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.engine import Connection
 
 from app.db.schema import job_version_io_mapping, job_versions
-from app.models.types.lineage import JobVersionIOType
+from app.models.constant import JobVersionIOType
 
 
 class LineageQueryRepository:

@@ -14,7 +14,7 @@ This service currently covers:
 - tasks and task attempts
 - worker registration and heartbeat
 - atomic task claiming
-- task logs and artifact references
+- execution log file artifacts and other artifact references
 - lineage/MLflow linkage fields on task attempts
 - lineage event ingestion
 - metadata projection for jobs, runs, datasets, versions, and facets
@@ -35,6 +35,8 @@ The deeper design documents live under `docs/`:
 - [docs/DATABASE_SCHEMA_DRAFT.md](./docs/DATABASE_SCHEMA_DRAFT.md)
 - [docs/V1_API_OPENAPI_STYLE.md](./docs/V1_API_OPENAPI_STYLE.md)
 - [docs/DJ_WORKER_PAYLOAD_AND_SEQUENCE.md](./docs/DJ_WORKER_PAYLOAD_AND_SEQUENCE.md)
+- [docs/ENVIRONMENT_VARIABLES.md](./docs/ENVIRONMENT_VARIABLES.md)
+  Runtime environment defaults and operator configuration entrypoints.
 
 ## Quick start
 
@@ -45,6 +47,9 @@ cp .env.example .env
 createdb dj_panel  # only if the database does not already exist
 .venv/bin/dj-panel master --migrate --reload
 ```
+
+For all supported runtime environment variables and precedence rules, see
+[docs/ENVIRONMENT_VARIABLES.md](./docs/ENVIRONMENT_VARIABLES.md).
 
 Default local database URL:
 

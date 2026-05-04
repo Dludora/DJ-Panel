@@ -11,10 +11,10 @@ from sqlalchemy.pool import StaticPool
 
 from app.api.routes.lineage import get_ingestion_service, get_lineage_query_service
 from app.api.routes.metadata import get_metadata_service
-from app.db.session import get_engine
+from app.db.engine import get_engine
 from app.db.schema import metadata
 from app.main import app
-from app.models.api.ingestion import IngestionStatus
+from app.models.api import IngestionStatus
 from app.services.ingestion import IngestionService
 from app.services.lineage_query import LineageQueryService
 from app.services.metadata import MetadataService

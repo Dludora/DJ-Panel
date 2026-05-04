@@ -2,10 +2,9 @@ from fastapi import APIRouter, Depends
 
 from app.api.dependencies import get_task_service
 from app.api.errors import conflict, not_found
-from app.models.api.control_plane import (
+from app.models.api import (
     TaskArtifactCreateRequest,
     TaskClaimRequest,
-    TaskLogCreateRequest,
     TaskTransitionRequest,
 )
 from app.services.tasks import TaskService
@@ -91,25 +90,6 @@ def cancel_task(
         return service.cancel_task(task_id, payload)
     except ValueError as exc:
         raise conflict(str(exc)) from exc
-
-
-@router.post("/task-attempts/{attempt_id}/logs", status_code=201)
-def create_task_log(
-    attempt_id: str,
-    payload: TaskLogCreateRequest,
-    service: TaskService = Depends(get_task_service),
-) -> dict:
-    try:
-        return service.create_log(attempt_id, payload)
-    except ValueError as exc:
-        raise not_found(str(exc)) from exc
-
-
-@router.get("/task-attempts/{attempt_id}/logs")
-def list_task_logs(
-    attempt_id: str, service: TaskService = Depends(get_task_service)
-) -> dict:
-    return service.list_logs(attempt_id)
 
 
 @router.post("/task-attempts/{attempt_id}/artifacts", status_code=201)

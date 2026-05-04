@@ -8,9 +8,9 @@ from sqlalchemy import insert, select, update
 from sqlalchemy.engine import Connection
 
 from app.config import get_settings
-from app.db.schema import task_artifacts, task_attempts, task_logs, tasks
-from app.db.rows.control_plane import TaskAttemptRow, TaskRow
-from app.models.types.control_plane import TaskAttemptStatus, TaskStatus
+from app.db.schema import task_artifacts, task_attempts, tasks
+from app.db.rows import TaskAttemptRow, TaskRow
+from app.models.constant import TaskAttemptStatus, TaskKind, TaskStatus
 from app.repositories.utils import new_id, utc_now
 
 
@@ -26,7 +26,7 @@ class TaskRepository:
         env_vars: dict,
         execution_spec: dict,
         timeout_seconds: int,
-        task_kind: str = 'generic_command',
+        task_kind: str = TaskKind.GENERIC_COMMAND.value,
     ) -> TaskRow:
         task_id = new_id()
         now = utc_now()
@@ -172,47 +172,6 @@ class TaskRepository:
             update(task_attempts).where(task_attempts.c.id == attempt_id).values(last_heartbeat_at=now, updated_at=now)
         )
         return self.get_attempt_by_id(conn, attempt_id)
-
-    def create_task_log(self, conn: Connection, attempt_id: str, stream: str, message: str, sequence: Optional[int]) -> dict:
-        log_id = new_id()
-        logged_at = utc_now()
-        seq = sequence if sequence is not None else 0
-        conn.execute(
-            insert(task_logs).values(
-                id=log_id,
-                attempt_id=attempt_id,
-                stream=stream,
-                message=message,
-                sequence=seq,
-                logged_at=logged_at,
-            )
-        )
-        return {
-            'id': log_id,
-            'attemptId': attempt_id,
-            'stream': stream,
-            'message': message,
-            'sequence': seq,
-            'loggedAt': logged_at,
-        }
-
-    def list_task_logs(self, conn: Connection, attempt_id: str) -> list[dict]:
-        rows = conn.execute(
-            select(task_logs)
-            .where(task_logs.c.attempt_id == attempt_id)
-            .order_by(task_logs.c.sequence.asc(), task_logs.c.logged_at.asc())
-        ).mappings().all()
-        return [
-            {
-                'id': row['id'],
-                'attemptId': row['attempt_id'],
-                'stream': row['stream'],
-                'message': row['message'],
-                'sequence': row['sequence'],
-                'loggedAt': row['logged_at'],
-            }
-            for row in rows
-        ]
 
     def create_task_artifact(
         self,

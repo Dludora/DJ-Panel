@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from enum import Enum
 from typing import Any
 
-from app.models.schemas.openlineage import (
+from app.models.protocols.openlineage import (
     DatasetEvent,
     JobEvent,
     OpenLineageEvent,

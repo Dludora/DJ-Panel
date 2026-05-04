@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy.engine import Engine
 from typing import Optional
 
-from app.models.api.control_plane import (
+from app.models.api import (
     RecipeResponse,
     RecipesResponse,
     RecipeVersionResponse,

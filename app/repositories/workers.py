@@ -7,8 +7,8 @@ from sqlalchemy import insert, select, update
 from sqlalchemy.engine import Connection
 
 from app.db.schema import worker_heartbeats, workers
-from app.db.rows.control_plane import WorkerRow
-from app.models.types.control_plane import WorkerStatus
+from app.db.rows import WorkerRow
+from app.models.constant import WorkerStatus
 from app.repositories.utils import new_id, utc_now
 
 

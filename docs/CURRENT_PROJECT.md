@@ -26,7 +26,7 @@ The practical product scope right now is:
 - command-based training and evaluation submission creation
 - DJ worker polling and execution
 - command-based training and evaluation worker polling and execution
-- task logs and task artifact references
+- task artifact references, including execution log file artifacts
 - lineage event ingestion from Data-Juicer and MLflow-style producers
 - metadata queries over projected jobs, runs, datasets, dataset versions, and facets
 
@@ -92,7 +92,6 @@ Implemented HTTP groups:
 - run submissions
 - workers
 - tasks
-- task logs
 - task artifacts
 
 Implemented database direction:
@@ -155,7 +154,7 @@ Current DJ behavior:
 - worker only claims `taskKind = dj_recipe`
 - worker materializes `recipe.yaml` locally
 - worker runs `dj-process --config <materialized recipe>`
-- worker streams stdout/stderr to task logs
+- worker writes execution output to a local log file and records it as an artifact
 - worker records the materialized config as a task artifact
 - worker marks task success or failure
 
@@ -166,7 +165,7 @@ Current training/evaluation behavior:
 - worker only claims `taskKind = training` or `taskKind = evaluation`
 - worker reads `command`, `workdir`, and `env` from submission-backed task payload
 - worker executes the command directly in the declared workdir
-- worker streams stdout/stderr to task logs
+- worker writes execution output to a local log file and records it as an artifact
 - worker marks task success or failure
 
 This is intentionally the minimal command-based version. The backend does not yet

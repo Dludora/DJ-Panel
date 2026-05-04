@@ -6,7 +6,7 @@ from sqlalchemy import insert, select, update
 from sqlalchemy.engine import Connection
 
 from app.db.schema import recipe_versions, recipes
-from app.db.rows.control_plane import RecipeRow, RecipeVersionRow
+from app.db.rows import RecipeRow, RecipeVersionRow
 from app.repositories.utils import new_id, utc_now
 
 

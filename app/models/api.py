@@ -1,14 +1,30 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from enum import Enum
+from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.api.base import ApiModel
+from app.models.constant import RunSubmissionKind, TaskKind
 
 
-class WorkspaceCreateRequest(BaseModel):
+class RequestModel(BaseModel):
+    pass
+
+
+class ApiModel(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    def to_api_dict(self) -> dict[str, Any]:
+        return self.model_dump(by_alias=True)
+
+
+class IngestionStatus(str, Enum):
+    ACCEPTED = "accepted"
+
+
+class WorkspaceCreateRequest(RequestModel):
     slug: str
     name: str
     description: str = ""
@@ -28,7 +44,7 @@ class WorkspacesResponse(ApiModel):
     workspaces: list[WorkspaceResponse] = Field(default_factory=list)
 
 
-class WorkspaceMemberAddRequest(BaseModel):
+class WorkspaceMemberAddRequest(RequestModel):
     user_name: str = Field(alias="userName")
     role: str = "MEMBER"
 
@@ -45,7 +61,7 @@ class WorkspaceMembersResponse(ApiModel):
     members: list[WorkspaceMemberResponse] = Field(default_factory=list)
 
 
-class RecipeCreateRequest(BaseModel):
+class RecipeCreateRequest(RequestModel):
     name: str
     description: str = ""
     owner_name: str = Field(alias="ownerName")
@@ -60,7 +76,7 @@ class RecipeCreateRequest(BaseModel):
     timeout_seconds: int = Field(default=3600, alias="timeoutSeconds")
 
 
-class RecipeVersionCreateRequest(BaseModel):
+class RecipeVersionCreateRequest(RequestModel):
     created_by: str = Field(alias="createdBy")
     recipe_body: dict[str, Any] = Field(default_factory=dict, alias="recipeBody")
     command: str
@@ -110,11 +126,13 @@ class RecipeVersionsResponse(ApiModel):
     versions: list[RecipeVersionResponse] = Field(default_factory=list)
 
 
-class RunSubmissionCreateRequest(BaseModel):
+class RunSubmissionCreateRequest(RequestModel):
     recipe_version_id: Optional[str] = Field(default=None, alias="recipeVersionId")
     name: Optional[str] = None
     requested_by: str = Field(alias="requestedBy")
-    submission_kind: str = Field(default="processing_pipeline", alias="submissionKind")
+    submission_kind: RunSubmissionKind = Field(
+        default=RunSubmissionKind.PROCESSING_PIPELINE, alias="submissionKind"
+    )
     parameters: dict[str, Any] = Field(default_factory=dict)
     spec: dict[str, Any] = Field(default_factory=dict)
     inputs: list[dict[str, Any]] = Field(default_factory=list)
@@ -128,7 +146,9 @@ class RunSubmissionResponse(ApiModel):
     recipe_version_id: Optional[str] = Field(default=None, alias="recipeVersionId")
     name: Optional[str] = None
     requested_by: str = Field(alias="requestedBy")
-    submission_kind: str = Field(default="processing_pipeline", alias="submissionKind")
+    submission_kind: RunSubmissionKind = Field(
+        default=RunSubmissionKind.PROCESSING_PIPELINE, alias="submissionKind"
+    )
     status: str
     parameters: dict[str, Any] = Field(default_factory=dict)
     spec: dict[str, Any] = Field(default_factory=dict)
@@ -143,7 +163,7 @@ class RunSubmissionsResponse(ApiModel):
     submissions: list[RunSubmissionResponse] = Field(default_factory=list)
 
 
-class WorkerRegisterRequest(BaseModel):
+class WorkerRegisterRequest(RequestModel):
     worker_id: str = Field(alias="workerId")
     display_name: str = Field(alias="displayName")
     labels: dict[str, Any] = Field(default_factory=dict)
@@ -151,7 +171,7 @@ class WorkerRegisterRequest(BaseModel):
     max_concurrency: int = Field(default=1, alias="maxConcurrency")
 
 
-class WorkerHeartbeatRequest(BaseModel):
+class WorkerHeartbeatRequest(RequestModel):
     status: Optional[str] = None
     labels: dict[str, Any] = Field(default_factory=dict)
     capabilities: dict[str, Any] = Field(default_factory=dict)
@@ -174,9 +194,9 @@ class WorkersResponse(ApiModel):
     workers: list[WorkerResponse] = Field(default_factory=list)
 
 
-class TaskClaimRequest(BaseModel):
+class TaskClaimRequest(RequestModel):
     worker_id: str = Field(alias="workerId")
-    supported_task_kinds: list[str] = Field(
+    supported_task_kinds: list[TaskKind] = Field(
         default_factory=list, alias="supportedTaskKinds"
     )
 
@@ -202,7 +222,7 @@ class TaskResponse(ApiModel):
     workspace_id: str = Field(alias="workspaceId")
     run_submission_id: str = Field(alias="runSubmissionId")
     recipe_version_id: Optional[str] = Field(default=None, alias="recipeVersionId")
-    task_kind: str = Field(default="generic_command", alias="taskKind")
+    task_kind: TaskKind = Field(default=TaskKind.GENERIC_COMMAND, alias="taskKind")
     status: str
     assigned_worker_id: Optional[str] = Field(default=None, alias="assignedWorkerId")
     current_attempt_id: Optional[str] = Field(default=None, alias="currentAttemptId")
@@ -231,7 +251,7 @@ class TaskClaimPayload(ApiModel):
     task_id: str = Field(alias="taskId")
     attempt_id: str = Field(alias="attemptId")
     lease_token: str = Field(alias="leaseToken")
-    task_kind: str = Field(default="generic_command", alias="taskKind")
+    task_kind: TaskKind = Field(default=TaskKind.GENERIC_COMMAND, alias="taskKind")
     submission: dict[str, Any] = Field(default_factory=dict)
     recipe_version: Optional[RecipeVersionResponse] = Field(
         default=None, alias="recipeVersion"
@@ -247,7 +267,7 @@ class TaskClaimResponse(ApiModel):
     task: Optional[TaskClaimPayload] = None
 
 
-class TaskTransitionRequest(BaseModel):
+class TaskTransitionRequest(RequestModel):
     attempt_id: str = Field(alias="attemptId")
     lease_token: str = Field(alias="leaseToken")
     openlineage_run_id: Optional[str] = Field(default=None, alias="openlineageRunId")
@@ -255,13 +275,7 @@ class TaskTransitionRequest(BaseModel):
     failure_reason: Optional[str] = Field(default=None, alias="failureReason")
 
 
-class TaskLogCreateRequest(BaseModel):
-    stream: str
-    message: str
-    sequence: Optional[int] = None
-
-
-class TaskArtifactCreateRequest(BaseModel):
+class TaskArtifactCreateRequest(RequestModel):
     kind: str
     name: str
     uri: str
@@ -269,19 +283,6 @@ class TaskArtifactCreateRequest(BaseModel):
     dataset_id: Optional[str] = Field(default=None, alias="datasetId")
     dataset_version_id: Optional[str] = Field(default=None, alias="datasetVersionId")
     model_uri: Optional[str] = Field(default=None, alias="modelUri")
-
-
-class TaskLogResponse(ApiModel):
-    id: str
-    attempt_id: str = Field(alias="attemptId")
-    stream: str
-    message: str
-    sequence: int = 0
-    logged_at: datetime = Field(alias="loggedAt")
-
-
-class TaskLogsResponse(ApiModel):
-    logs: list[TaskLogResponse] = Field(default_factory=list)
 
 
 class TaskArtifactResponse(ApiModel):
@@ -299,3 +300,170 @@ class TaskArtifactResponse(ApiModel):
 
 class TaskArtifactsResponse(ApiModel):
     artifacts: list[TaskArtifactResponse] = Field(default_factory=list)
+
+
+class NamespaceName(ApiModel):
+    namespace: str
+    name: str
+
+
+class VersionedNamespaceName(NamespaceName):
+    version: str
+
+
+class NamespaceModel(ApiModel):
+    name: str
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+    owner_name: str = Field(alias="ownerName")
+    description: str
+    is_hidden: bool = Field(alias="isHidden")
+
+
+class FieldModel(ApiModel):
+    name: str
+    type: str | None = None
+    tags: list[Any] = Field(default_factory=list)
+    description: str = ""
+
+
+class TagModel(ApiModel):
+    name: str
+    description: str
+
+
+class JobVersionName(ApiModel):
+    name: str
+    namespace: str
+    version: str
+
+
+class RunModel(ApiModel):
+    id: str
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+    nominal_start_time: datetime | None = Field(alias="nominalStartTime")
+    nominal_end_time: datetime | None = Field(alias="nominalEndTime")
+    state: str
+    job_version: JobVersionName = Field(alias="jobVersion")
+    started_at: datetime | None = Field(alias="startedAt")
+    ended_at: datetime | None = Field(alias="endedAt")
+    duration_ms: int = Field(alias="durationMs")
+    args: dict[str, Any] = Field(default_factory=dict)
+    facets: dict[str, Any] = Field(default_factory=dict)
+
+
+class JobModel(ApiModel):
+    id: NamespaceName
+    type: str
+    name: str
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+    inputs: list[NamespaceName] = Field(default_factory=list)
+    outputs: list[NamespaceName] = Field(default_factory=list)
+    namespace: str
+    location: str
+    description: str
+    simple_name: str = Field(alias="simpleName")
+    latest_run: RunModel | None = Field(alias="latestRun")
+    latest_runs: list[RunModel] = Field(default_factory=list, alias="latestRuns")
+    tags: list[Any] = Field(default_factory=list)
+    parent_job_name: str | None = Field(default=None, alias="parentJobName")
+    parent_job_uuid: str | None = Field(default=None, alias="parentJobUuid")
+
+
+class DatasetModel(ApiModel):
+    id: NamespaceName
+    type: str
+    asset_kind: str = Field(default="DATASET", alias="assetKind")
+    name: str
+    physical_name: str = Field(alias="physicalName")
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+    namespace: str
+    source_name: str = Field(alias="sourceName")
+    fields: list[FieldModel] = Field(default_factory=list)
+    tags: list[Any] = Field(default_factory=list)
+    last_modified_at: datetime = Field(alias="lastModifiedAt")
+    description: str
+    facets: dict[str, Any] = Field(default_factory=dict)
+    deleted: bool
+    column_lineage: Any | None = Field(default=None, alias="columnLineage")
+
+
+class DatasetVersionModel(ApiModel):
+    id: VersionedNamespaceName
+    type: str
+    asset_kind: str = Field(default="DATASET", alias="assetKind")
+    created_by_run: RunModel | None = Field(alias="createdByRun")
+    name: str
+    physical_name: str = Field(alias="physicalName")
+    created_at: datetime = Field(alias="createdAt")
+    version: str
+    storage_uri: str | None = Field(default=None, alias="storageUri")
+    namespace: str
+    source_name: str = Field(alias="sourceName")
+    fields: list[FieldModel] = Field(default_factory=list)
+    tags: list[Any] = Field(default_factory=list)
+    last_modified_at: datetime = Field(alias="lastModifiedAt")
+    description: str
+    lifecycle_state: str = Field(alias="lifecycleState")
+    facets: dict[str, Any] = Field(default_factory=dict)
+
+
+class RunFacetsModel(ApiModel):
+    run_id: str = Field(alias="runId")
+    facets: dict[str, Any] = Field(default_factory=dict)
+
+
+class TagsResponse(ApiModel):
+    tags: list[TagModel] = Field(default_factory=list)
+
+
+class NamespacesResponse(ApiModel):
+    namespaces: list[NamespaceModel] = Field(default_factory=list)
+
+
+class JobsResponse(ApiModel):
+    jobs: list[JobModel] = Field(default_factory=list)
+    total_count: int = Field(alias="totalCount")
+
+
+class RunsResponse(ApiModel):
+    runs: list[RunModel] = Field(default_factory=list)
+    total_count: int = Field(alias="totalCount")
+
+
+class DatasetsResponse(ApiModel):
+    datasets: list[DatasetModel] = Field(default_factory=list)
+    total_count: int = Field(alias="totalCount")
+
+
+class DatasetVersionsResponse(ApiModel):
+    versions: list[DatasetVersionModel] = Field(default_factory=list)
+    total_count: int = Field(alias="totalCount")
+
+
+NodeType = Literal["JOB", "DATASET"]
+
+
+class Edge(ApiModel):
+    origin: str
+    destination: str
+
+
+class Node(ApiModel):
+    id: str
+    type: NodeType
+    data: dict[str, Any]
+    in_edges: list[Edge] = Field(default_factory=list, alias="inEdges")
+    out_edges: list[Edge] = Field(default_factory=list, alias="outEdges")
+
+
+class LineageResponse(ApiModel):
+    graph: list[Node]
+
+
+class IngestionResponse(ApiModel):
+    status: IngestionStatus = IngestionStatus.ACCEPTED
+    projected: bool

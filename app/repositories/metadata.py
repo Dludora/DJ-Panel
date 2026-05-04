@@ -15,15 +15,15 @@ from app.db.schema import (
     run_facets,
     runs,
 )
-from app.db.rows.lineage import AssetRow, AssetVersionRow, JobRow, NamespaceRow, RunRow
-from app.models.types.lineage import (
+from app.db.rows import AssetRow, AssetVersionRow, JobRow, NamespaceRow, RunRow
+from app.models.constant import (
     DatasetLifecycleState,
     JobProcessingType,
     JobVersionIOType,
     RUN_EVENT_TO_WEB_RUN_STATE,
     WebRunState,
 )
-from app.models.api.metadata import (
+from app.models.api import (
     DatasetModel,
     DatasetVersionModel,
     DatasetVersionsResponse,
@@ -42,7 +42,7 @@ from app.models.api.metadata import (
     TagsResponse,
     VersionedNamespaceName,
 )
-from app.models.schemas.openlineage import RunEventType
+from app.models.protocols.openlineage import RunEventType
 
 
 class MetadataRepository:

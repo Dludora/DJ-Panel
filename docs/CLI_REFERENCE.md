@@ -4,6 +4,9 @@ This document describes the current `dj-panel` CLI from the codebase as it exist
 It focuses on command hierarchy, responsibilities at each layer, common workflows, and
 how defaults are resolved.
 
+For runtime environment variables and code-level defaults, also see
+[ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md).
+
 ---
 
 ## 中文
@@ -18,6 +21,20 @@ how defaults are resolved.
 4. Recipe 管理层：导入、查看、发布 Data-Juicer recipe
 5. 运行提交层：基于 recipe version 创建一次 run submission
 6. Worker 执行层：启动 Data-Juicer、training、evaluation worker，持续认领并执行任务
+
+### 1.1 默认值来源
+
+CLI 的默认值来源优先级如下：
+
+1. 显式命令行参数
+2. 本地 CLI 配置 `DJ_PANEL_CLI_CONFIG_PATH` 指向的文件
+3. 环境变量
+4. `app/config.py` 中的代码默认值
+
+其中：
+
+- `workspace`、`user`、`base-url` 这类用户习惯型默认值，通常通过本地 CLI 配置维护
+- `host`、`port`、`database-url`、`workdir`、`dj-bin` 这类运行时默认值，统一通过环境变量和 `app/config.py` 管理
 
 当前命令树如下：
 
@@ -107,11 +124,13 @@ dj-panel web --backend-url http://127.0.0.1:8000 --install-deps
 - 维护 CLI 的本地默认配置
 - 避免每个命令都重复传 `--workspace`、`--user`、`--base-url`
 
-本地配置文件位置：
+本地配置文件默认位置：
 
 ```text
 ~/.config/dj-panel/config.json
 ```
+
+这个路径也可以通过 `DJ_PANEL_CLI_CONFIG_PATH` 改写。
 
 ##### `dj-panel config set`
 

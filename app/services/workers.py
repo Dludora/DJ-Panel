@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from sqlalchemy.engine import Engine
 
-from app.models.api.control_plane import WorkerResponse, WorkersResponse
+from app.models.api import WorkerResponse, WorkersResponse
 from app.repositories.workers import WorkerRepository
 from app.repositories.workspaces import WorkspaceRepository
 
@@ -17,7 +17,7 @@ class WorkerService:
         with self.engine.begin() as conn:
             workspace = self.workspace_repo.get_by_slug(conn, workspace_slug)
             if not workspace:
-                raise ValueError('workspace not found')
+                raise ValueError("workspace not found")
             worker = self.worker_repo.register_worker(
                 conn,
                 workspace_id=workspace.id,
@@ -33,7 +33,7 @@ class WorkerService:
         with self.engine.begin() as conn:
             worker = self.worker_repo.get_worker_by_id(conn, worker_id)
             if not worker:
-                raise ValueError('worker not found')
+                raise ValueError("worker not found")
             updated = self.worker_repo.record_heartbeat(
                 conn,
                 worker_id=worker_id,
@@ -47,9 +47,11 @@ class WorkerService:
         with self.engine.begin() as conn:
             workspace = self.workspace_repo.get_by_slug(conn, workspace_slug)
             if not workspace:
-                raise ValueError('workspace not found')
+                raise ValueError("workspace not found")
             workers = self.worker_repo.list_workers(conn, workspace.id)
-            return WorkersResponse(workers=[self._response(worker) for worker in workers]).to_api_dict()
+            return WorkersResponse(
+                workers=[self._response(worker) for worker in workers]
+            ).to_api_dict()
 
     @staticmethod
     def _response(worker) -> WorkerResponse:

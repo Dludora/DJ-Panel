@@ -6,7 +6,7 @@ from sqlalchemy import insert, select, update
 from sqlalchemy.engine import Connection
 
 from app.db.schema import workspace_members, workspaces
-from app.db.rows.control_plane import WorkspaceMemberRow, WorkspaceRow
+from app.db.rows import WorkspaceMemberRow, WorkspaceRow
 from app.repositories.utils import new_id, utc_now
 
 

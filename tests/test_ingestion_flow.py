@@ -20,8 +20,8 @@ from app.db.schema import (
     run_facets,
     runs,
 )
-from app.models.types.lineage import DatasetLifecycleState, JobVersionIOType
-from app.models.schemas.openlineage import RunEventType
+from app.models.constant import DatasetLifecycleState, JobVersionIOType
+from app.models.protocols.openlineage import RunEventType
 from app.services.event_resolver import parse_event
 from app.services.ingestion import IngestionService
 

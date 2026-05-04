@@ -6,7 +6,7 @@ from sqlalchemy import func, insert, select
 from sqlalchemy.engine import Connection
 
 from app.db.schema import lineage_events
-from app.models.schemas.openlineage import (
+from app.models.protocols.openlineage import (
     DatasetEvent,
     JobEvent,
     OpenLineageEvent,

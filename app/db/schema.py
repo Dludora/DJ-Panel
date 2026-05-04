@@ -16,10 +16,9 @@ from sqlalchemy import (
     false,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 
 metadata = MetaData()
-json_type = JSON().with_variant(JSONB, "postgresql")
+json_type = JSON()
 
 workspaces = Table(
     "workspaces",
@@ -269,24 +268,6 @@ task_attempts = Table(
     ),
     UniqueConstraint(
         "task_id", "attempt_number", name="uq_task_attempts_task_attempt_number"
-    ),
-)
-
-task_logs = Table(
-    "task_logs",
-    metadata,
-    Column("id", String(36), primary_key=True),
-    Column(
-        "attempt_id",
-        String(36),
-        ForeignKey("task_attempts.id", ondelete="CASCADE"),
-        nullable=False,
-    ),
-    Column("stream", String(32), nullable=False),
-    Column("message", Text, nullable=False),
-    Column("sequence", Integer, nullable=False, server_default="0"),
-    Column(
-        "logged_at", DateTime(timezone=True), nullable=False, server_default=func.now()
     ),
 )
 

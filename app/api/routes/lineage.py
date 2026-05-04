@@ -4,8 +4,8 @@ from sqlalchemy.engine import Engine
 
 from app.api.dependencies import get_ingestion_service, get_lineage_query_service
 from app.api.errors import bad_request, validation_error
-from app.db.session import get_engine
-from app.models.api.ingestion import IngestionResponse
+from app.db.engine import get_engine
+from app.models.api import IngestionResponse
 from app.repositories.lineage_events import LineageEventRepository
 from app.services.event_resolver import parse_event
 from app.services.ingestion import IngestionService

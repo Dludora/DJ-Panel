@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from app.api.dependencies import get_workspace_service
 from app.api.errors import not_found
-from app.models.api.control_plane import WorkspaceCreateRequest, WorkspaceMemberAddRequest
+from app.models.api import WorkspaceCreateRequest, WorkspaceMemberAddRequest
 from app.services.workspaces import WorkspaceService
 
 router = APIRouter(prefix='/api/v1', tags=['workspaces'])
