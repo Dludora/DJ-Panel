@@ -431,6 +431,58 @@ def render_submission(payload: dict[str, Any]) -> None:
     )
 
 
+def render_dataset(payload: dict[str, Any]) -> None:
+    print_kv(
+        [
+            ("Dataset ID", payload.get("catalogId")),
+            ("Namespace", payload.get("namespace")),
+            ("Name", payload.get("name")),
+            ("Asset Kind", payload.get("assetKind")),
+            ("Catalog Source", payload.get("catalogSource")),
+            ("Description", payload.get("description")),
+            ("Created", payload.get("createdAt")),
+            ("Updated", payload.get("updatedAt")),
+        ]
+    )
+
+
+def render_dataset_version(payload: dict[str, Any]) -> None:
+    version_id = payload.get("id") or {}
+    print_kv(
+        [
+            ("Namespace", version_id.get("namespace")),
+            ("Name", version_id.get("name")),
+            ("Version", version_id.get("version")),
+            ("Asset Kind", payload.get("assetKind")),
+            ("Storage URI", payload.get("storageUri")),
+            ("Created", payload.get("createdAt")),
+        ]
+    )
+
+
+def render_dataset_list(payload: dict[str, Any]) -> None:
+    rows = [
+        {"namespace": item.get("namespace"), "name": item.get("name")}
+        for item in payload.get("datasets", [])
+    ]
+    print_table(rows, [("namespace", "NAMESPACE"), ("name", "NAME")])
+
+
+def render_dataset_latest_version(payload: dict[str, Any]) -> None:
+    facets = payload.get("facets") or {}
+    print_kv(
+        [
+            ("Namespace", payload.get("id", {}).get("namespace")),
+            ("Name", payload.get("id", {}).get("name")),
+            ("Version", payload.get("id", {}).get("version")),
+            ("Storage URI", payload.get("storageUri")),
+            ("Fields", payload.get("fields")),
+            ("dataSource", facets.get("dataSource") or facets.get("datasource")),
+            ("datajuicerInput", facets.get("datajuicerInput")),
+        ]
+    )
+
+
 def render_submissions(payload: dict[str, Any]) -> None:
     print_table(
         payload.get("submissions", []),

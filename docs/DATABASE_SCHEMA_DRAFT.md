@@ -554,14 +554,6 @@ Columns:
 - `relation_type` varchar not null default `PRIMARY`
 - PK (`run_submission_id`, `run_id`)
 
-### `task_logs`
-
-- `id` UUID PK
-- `task_attempt_id` UUID FK -> `task_attempts.id`
-- `stream` varchar not null
-- `message` text not null
-- `logged_at` timestamptz not null default `now()`
-
 ### `task_artifacts`
 
 - `id` UUID PK
@@ -569,7 +561,7 @@ Columns:
 - `artifact_type` varchar not null
 - `name` varchar not null
 - `uri` text not null
-- `metadata` jsonb not null default `'{}'::jsonb`
+- `metadata` json not null default `{}`
 - `created_at` timestamptz not null default `now()`
 
 ## 9. What Should Not Exist in the Target Schema
@@ -593,5 +585,5 @@ Reason:
 The target schema keeps one runtime fact system and one dispatch system:
 
 - OpenLineage projections own `jobs`, `runs`, inputs, outputs, and facets
-- the tool owns recipe authoring, run submission, task dispatch, attempts, logs, and artifacts
+- the tool owns recipe authoring, run submission, task dispatch, attempts, and task artifacts, including registered log files
 - dataset-like and model-like assets should share the same `assets` and `asset_versions` backbone, with facet-derived classification and future product-specific filtered views

@@ -9,7 +9,7 @@ from sqlalchemy.engine import Connection
 from app.db.schema import run_submissions
 from app.db.rows import RunSubmissionRow
 from app.models.constant import RunSubmissionStatus
-from app.repositories.utils import new_id, utc_now
+from app.utils.common_utils import new_id, utc_now
 
 
 class RunSubmissionRepository:

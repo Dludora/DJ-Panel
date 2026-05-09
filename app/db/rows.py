@@ -260,6 +260,33 @@ class TaskAttemptRow:
 
 
 @dataclass(frozen=True)
+class ExecutionLinkRow:
+    id: str
+    run_submission_id: Optional[str]
+    task_id: Optional[str]
+    task_attempt_id: Optional[str]
+    openlineage_run_id: str
+    lineage_run_id: Optional[str]
+    lineage_job_id: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> "ExecutionLinkRow":
+        return cls(
+            id=_value(mapping, "id"),
+            run_submission_id=mapping.get("run_submission_id"),
+            task_id=mapping.get("task_id"),
+            task_attempt_id=mapping.get("task_attempt_id"),
+            openlineage_run_id=_value(mapping, "openlineage_run_id"),
+            lineage_run_id=mapping.get("lineage_run_id"),
+            lineage_job_id=mapping.get("lineage_job_id"),
+            created_at=_value(mapping, "created_at"),
+            updated_at=_value(mapping, "updated_at"),
+        )
+
+
+@dataclass(frozen=True)
 class NamespaceRow:
     name: str
     created_at: datetime
@@ -338,6 +365,8 @@ class AssetRow:
     namespace: str
     name: str
     asset_kind: str
+    catalog_source: str
+    current_version_id: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -348,6 +377,8 @@ class AssetRow:
             namespace=row["namespace"],
             name=row["name"],
             asset_kind=row.get("asset_kind", "DATASET"),
+            catalog_source=row.get("catalog_source", "LINEAGE_DISCOVERED"),
+            current_version_id=row.get("current_version_id"),
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )

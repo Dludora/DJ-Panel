@@ -22,8 +22,8 @@ from app.db.schema import (
 )
 from app.models.constant import DatasetLifecycleState, JobVersionIOType
 from app.models.protocols.openlineage import RunEventType
-from app.services.event_resolver import parse_event
-from app.services.ingestion import IngestionService
+from app.utils.openlineage_utils import parse_event
+from app.services.lineage import LineageService
 
 FIXTURES = Path(__file__).parent / 'fixtures'
 
@@ -49,7 +49,7 @@ def engine():
 
 @pytest.fixture()
 def ingestion_service(engine):
-    return IngestionService(engine)
+    return LineageService(engine)
 
 
 def test_start_then_complete_updates_run_and_creates_job_version_and_dataset_version(ingestion_service, engine) -> None:
@@ -64,13 +64,19 @@ def test_start_then_complete_updates_run_and_creates_job_version_and_dataset_ver
 
     with engine.begin() as conn:
         run_row = conn.execute(select(runs)).mappings().one()
+        dataset_rows = conn.execute(select(datasets)).mappings().all()
+        dataset_version_rows = conn.execute(select(dataset_versions)).mappings().all()
         assert run_row['run_id'] == 'run-001'
         assert run_row['state'] == 'START'
         assert run_row['started_at'] is not None
         assert run_row['ended_at'] is None
         assert run_row['job_version_id'] is None
         assert conn.execute(select(job_versions)).mappings().all() == []
-        assert conn.execute(select(dataset_versions)).mappings().all() == []
+        assert len(dataset_version_rows) == 1
+        training_dataset = next(row for row in dataset_rows if row["name"] == "training_dataset")
+        model_dataset = next(row for row in dataset_rows if row["name"] == "model_artifact")
+        assert training_dataset["current_version_id"] is not None
+        assert model_dataset["current_version_id"] is None
 
     complete_result = ingestion_service.ingest(complete_event, complete_payload)
     assert complete_result.projected is True
@@ -81,6 +87,7 @@ def test_start_then_complete_updates_run_and_creates_job_version_and_dataset_ver
         versions = conn.execute(select(job_versions)).mappings().all()
         mappings = conn.execute(select(job_version_io_mapping)).mappings().all()
         dataset_version_rows = conn.execute(select(dataset_versions)).mappings().all()
+        dataset_rows = conn.execute(select(datasets)).mappings().all()
 
         assert run_row['state'] == RunEventType.COMPLETE.value
         assert run_row['job_version_id'] is not None
@@ -92,8 +99,18 @@ def test_start_then_complete_updates_run_and_creates_job_version_and_dataset_ver
             JobVersionIOType.INPUT.value,
             JobVersionIOType.OUTPUT.value,
         ]
-        assert len(dataset_version_rows) == 1
-        assert dataset_version_rows[0]['lifecycle_state'] == DatasetLifecycleState.ACTIVE.value
+        assert len(dataset_version_rows) == 2
+        output_versions = [
+            row for row in dataset_version_rows if row["created_by_run_id"] == run_row["id"]
+        ]
+        assert len(output_versions) == 1
+        assert all(
+            row['lifecycle_state'] == DatasetLifecycleState.ACTIVE.value
+            for row in dataset_version_rows
+        )
+        model_dataset = next(row for row in dataset_rows if row["name"] == "model_artifact")
+        assert model_dataset["current_version_id"] is not None
+        assert any(row["id"] == model_dataset["current_version_id"] for row in output_versions)
 
 
 def test_facets_namespaces_and_dataset_versions_are_projected(ingestion_service, engine) -> None:
@@ -103,16 +120,29 @@ def test_facets_namespaces_and_dataset_versions_are_projected(ingestion_service,
 
     with engine.begin() as conn:
         run_facet_rows = conn.execute(select(run_facets.c.facet_name, run_facets.c.payload)).all()
-        job_facet_rows = conn.execute(select(job_facets.c.facet_name, job_facets.c.payload)).all()
+        job_facet_rows = conn.execute(
+            select(
+                job_facets.c.facet_name,
+                job_facets.c.payload,
+                job_facets.c.job_version_id,
+                job_facets.c.run_id,
+            )
+        ).all()
         dataset_rows = conn.execute(select(datasets)).mappings().all()
         dataset_facet_rows = conn.execute(
-            select(dataset_facets.c.asset_id, dataset_facets.c.facet_name, dataset_facets.c.payload)
+            select(
+                dataset_facets.c.asset_id,
+                dataset_facets.c.facet_name,
+                dataset_facets.c.payload,
+                dataset_facets.c.asset_version_id,
+                dataset_facets.c.run_id,
+            )
         ).all()
         namespace_rows = conn.execute(select(namespaces.c.name)).all()
-        dataset_version_row = conn.execute(select(dataset_versions)).mappings().one()
+        dataset_version_rows = conn.execute(select(dataset_versions)).mappings().all()
 
     run_facets_by_name = {name: payload for name, payload in run_facet_rows}
-    job_facets_by_name = {name: payload for name, payload in job_facet_rows}
+    job_facets_by_name = {name: payload for name, payload, _, _ in job_facet_rows}
 
     assert 'datajuicer_run' in run_facets_by_name
     assert run_facets_by_name['datajuicer_run']['phase'] == 'complete'
@@ -123,23 +153,42 @@ def test_facets_namespaces_and_dataset_versions_are_projected(ingestion_service,
     assert job_facets_by_name['datajuicer']['recipe'] == 'train_recipe'
     assert 'jobType' in job_facets_by_name
     assert job_facets_by_name['jobType']['processingType'] == 'BATCH'
+    assert any(job_version_id is not None for _, _, job_version_id, _ in job_facet_rows)
+    assert any(run_id is not None for _, _, _, run_id in job_facet_rows)
 
     dataset_by_name = {row['name']: row['id'] for row in dataset_rows}
-    dataset_facets_grouped: dict[tuple[str, str], dict] = {
-        (dataset_id, facet_name): payload for dataset_id, facet_name, payload in dataset_facet_rows
+    dataset_facets_grouped: dict[tuple[str, str], tuple[dict, str | None, str | None]] = {
+        (dataset_id, facet_name): (payload, asset_version_id, run_id)
+        for dataset_id, facet_name, payload, asset_version_id, run_id in dataset_facet_rows
     }
 
     training_dataset_id = dataset_by_name['training_dataset']
     model_dataset_id = dataset_by_name['model_artifact']
     model_dataset_row = next(row for row in dataset_rows if row['name'] == 'model_artifact')
+    model_dataset_version_row = next(
+        row for row in dataset_version_rows if row["created_by_run_id"] is not None
+    )
 
-    assert dataset_facets_grouped[(training_dataset_id, 'schema')]['fields'][1]['name'] == 'feature'
-    assert dataset_facets_grouped[(training_dataset_id, '_input_facets')]['dataQuality']['rowCount'] == 100
-    assert dataset_facets_grouped[(model_dataset_id, 'mlflow_model')]['registry_stage'] == 'staging'
-    assert dataset_facets_grouped[(model_dataset_id, '_output_facets')]['outputStatistics']['rowCount'] == 1
+    training_schema_payload, training_schema_version_id, training_schema_run_id = dataset_facets_grouped[(training_dataset_id, 'schema')]
+    training_input_payload, training_input_version_id, training_input_run_id = dataset_facets_grouped[(training_dataset_id, '_input_facets')]
+    model_mlflow_payload, model_mlflow_version_id, model_mlflow_run_id = dataset_facets_grouped[(model_dataset_id, 'mlflow_model')]
+    model_output_payload, model_output_version_id, model_output_run_id = dataset_facets_grouped[(model_dataset_id, '_output_facets')]
+    assert training_schema_payload['fields'][1]['name'] == 'feature'
+    assert training_input_payload['dataQuality']['rowCount'] == 100
+    assert model_mlflow_payload['registry_stage'] == 'staging'
+    assert model_output_payload['outputStatistics']['rowCount'] == 1
     assert model_dataset_row['asset_kind'] == 'MODEL'
+    assert model_dataset_row['current_version_id'] == model_dataset_version_row['id']
+    assert training_schema_version_id is not None
+    assert training_input_version_id is not None
+    assert model_mlflow_version_id == model_dataset_version_row['id']
+    assert model_output_version_id == model_dataset_version_row['id']
+    assert training_schema_run_id is not None
+    assert training_input_run_id is not None
+    assert model_mlflow_run_id is not None
+    assert model_output_run_id is not None
     assert {row[0] for row in namespace_rows} == {'demo'}
-    assert dataset_version_row['fields'][0]['name'] == 'artifact_path'
+    assert model_dataset_version_row['fields'][0]['name'] == 'artifact_path'
 
 
 def test_job_and_dataset_events_are_accepted_and_distinguished(ingestion_service, engine) -> None:
@@ -156,8 +205,26 @@ def test_job_and_dataset_events_are_accepted_and_distinguished(ingestion_service
         dataset_rows = conn.execute(select(datasets)).mappings().all()
         job_rows = conn.execute(select(jobs)).mappings().all()
         run_rows = conn.execute(select(runs)).mappings().all()
-        job_facet_rows = conn.execute(select(job_facets.c.facet_name, job_facets.c.payload)).all()
-        dataset_facet_rows = conn.execute(select(dataset_facets.c.asset_id, dataset_facets.c.facet_name, dataset_facets.c.payload)).all()
+        job_version_rows = conn.execute(select(job_versions)).mappings().all()
+        job_version_io_rows = conn.execute(select(job_version_io_mapping)).mappings().all()
+        dataset_version_rows = conn.execute(select(dataset_versions)).mappings().all()
+        job_facet_rows = conn.execute(
+            select(
+                job_facets.c.facet_name,
+                job_facets.c.payload,
+                job_facets.c.job_version_id,
+                job_facets.c.run_id,
+            )
+        ).all()
+        dataset_facet_rows = conn.execute(
+            select(
+                dataset_facets.c.asset_id,
+                dataset_facets.c.facet_name,
+                dataset_facets.c.payload,
+                dataset_facets.c.asset_version_id,
+                dataset_facets.c.run_id,
+            )
+        ).all()
 
     assert run_rows == []
     assert {row['name'] for row in dataset_rows} == {
@@ -165,13 +232,34 @@ def test_job_and_dataset_events_are_accepted_and_distinguished(ingestion_service
         'registered_model',
     }
     assert job_rows[0]['name'] == 'declared_train_model'
+    assert job_rows[0]['current_job_version_id'] is not None
+    assert len(job_version_rows) == 1
+    assert job_version_rows[0]['id'] == job_rows[0]['current_job_version_id']
+    assert sorted(row['io_type'] for row in job_version_io_rows) == [
+        JobVersionIOType.INPUT.value,
+        JobVersionIOType.OUTPUT.value,
+    ]
 
-    job_facets_by_name = {name: payload for name, payload in job_facet_rows}
+    job_facets_by_name = {name: payload for name, payload, _, _ in job_facet_rows}
     assert job_facets_by_name['jobType']['processingType'] == 'BATCH'
+    assert any(job_version_id is not None for _, _, job_version_id, _ in job_facet_rows)
+    assert all(run_id is None for _, _, _, run_id in job_facet_rows)
 
     dataset_by_name = {row['name']: row['id'] for row in dataset_rows}
     grouped_dataset_facets = {
-        (dataset_id, facet_name): payload for dataset_id, facet_name, payload in dataset_facet_rows
+        (dataset_id, facet_name): (payload, asset_version_id, run_id)
+        for dataset_id, facet_name, payload, asset_version_id, run_id in dataset_facet_rows
     }
-    assert grouped_dataset_facets[(dataset_by_name['feature_store_snapshot'], 'schema')]['fields'][0]['name'] == 'id'
-    assert grouped_dataset_facets[(dataset_by_name['registered_model'], 'mlflow_model')]['registry_stage'] == 'production'
+    feature_payload, feature_version_id, feature_run_id = grouped_dataset_facets[(dataset_by_name['feature_store_snapshot'], 'schema')]
+    model_payload, model_version_id, model_run_id = grouped_dataset_facets[(dataset_by_name['registered_model'], 'mlflow_model')]
+    assert feature_payload['fields'][0]['name'] == 'id'
+    assert model_payload['registry_stage'] == 'production'
+    assert feature_version_id is not None
+    assert model_version_id is not None
+    assert feature_run_id is None
+    assert model_run_id is None
+    assert len(dataset_version_rows) == 2
+    feature_store_snapshot = next(row for row in dataset_rows if row["name"] == "feature_store_snapshot")
+    registered_model = next(row for row in dataset_rows if row["name"] == "registered_model")
+    assert feature_store_snapshot["current_version_id"] is not None
+    assert registered_model["current_version_id"] is not None

@@ -57,6 +57,20 @@ class ArtifactKind(str, Enum):
     LOG = "LOG"
 
 
+class AssetCatalogSource(str, Enum):
+    LINEAGE_DISCOVERED = "LINEAGE_DISCOVERED"
+    USER_REGISTERED = "USER_REGISTERED"
+
+
+class AssetKind(str, Enum):
+    DATASET = "DATASET"
+    MODEL = "MODEL"
+    CHECKPOINT = "CHECKPOINT"
+    EVAL_REPORT = "EVAL_REPORT"
+    METRIC_REPORT = "METRIC_REPORT"
+    ARTIFACT = "ARTIFACT"
+
+
 class JobVersionIOType(str, Enum):
     INPUT = "INPUT"
     OUTPUT = "OUTPUT"

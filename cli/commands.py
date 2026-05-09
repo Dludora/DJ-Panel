@@ -9,11 +9,13 @@ from pathlib import Path
 from app.config import get_settings
 from app.execution.worker_runtime import run_worker_from_args
 from app.models.api import (
+    AssetCreateRequest,
+    AssetVersionCreateRequest,
     RunSubmissionCreateRequest,
     WorkspaceCreateRequest,
     WorkspaceMemberAddRequest,
 )
-from app.models.constant import RunSubmissionKind
+from app.models.constant import AssetKind, RunSubmissionKind
 from cli.utils import (
     build_recipe_create_request,
     build_recipe_version_request,
@@ -24,6 +26,10 @@ from cli.utils import (
     load_json_arg,
     load_structured_arg,
     render_config,
+    render_dataset,
+    render_dataset_latest_version,
+    render_dataset_list,
+    render_dataset_version,
     render_json,
     render_member,
     render_members,
@@ -280,6 +286,149 @@ def cmd_run_submit(args: argparse.Namespace) -> None:
         )
         response.raise_for_status()
         render(response.json(), json_output=args.json, human_renderer=render_submission)
+
+
+def cmd_dataset_register(args: argparse.Namespace) -> None:
+    config = load_cli_config()
+    base_url = resolve_base_url(args, config)
+    facets = load_structured_arg(args.facets)
+    if args.dj_input_config:
+        facets["datajuicerInput"] = {
+            **(
+                facets.get("datajuicerInput", {})
+                if isinstance(facets.get("datajuicerInput"), dict)
+                else {}
+            ),
+            "inputConfig": load_structured_arg(args.dj_input_config),
+        }
+    payload = AssetCreateRequest(
+        namespace=args.namespace,
+        name=args.name,
+        assetKind=AssetKind.DATASET,
+        description=args.description,
+        facets=facets,
+    ).model_dump(by_alias=True, exclude_none=True)
+    with client(base_url) as http:
+        response = http.post("/api/v1/assets", json=payload)
+        response.raise_for_status()
+        render(response.json(), json_output=args.json, human_renderer=render_dataset)
+
+
+def cmd_dataset_version_register(args: argparse.Namespace) -> None:
+    config = load_cli_config()
+    base_url = resolve_base_url(args, config)
+    fields_payload = load_structured_arg(args.fields)
+    facets_payload = load_structured_arg(args.facets)
+    if fields_payload and not isinstance(fields_payload.get("fields", fields_payload), list):
+        raise ValueError("fields payload must be a list or an object containing a 'fields' list")
+    fields = fields_payload.get("fields", fields_payload) if fields_payload else []
+    if not isinstance(fields, list):
+        raise ValueError("fields payload must resolve to a list")
+    with client(base_url) as http:
+        asset = http.get(
+            f"/api/v1/namespaces/{args.namespace}/datasets/{args.name}"
+        )
+        asset.raise_for_status()
+        asset_id = asset.json()["catalogId"]
+        payload = AssetVersionCreateRequest(
+            version=args.version,
+            storageUri=args.storage_uri,
+            fields=fields,
+            facets=facets_payload,
+            lifecycleState=args.lifecycle_state,
+        ).model_dump(by_alias=True, exclude_none=True)
+        response = http.post(f"/api/v1/assets/{asset_id}/versions", json=payload)
+        response.raise_for_status()
+        render(
+            response.json(),
+            json_output=args.json,
+            human_renderer=render_dataset_version,
+        )
+
+
+def cmd_dataset_list(args: argparse.Namespace) -> None:
+    config = load_cli_config()
+    base_url = resolve_base_url(args, config)
+    limit = min(args.limit, 100)
+    offset = 0
+    datasets: list[dict] = []
+    total_count = 0
+    with client(base_url) as http:
+        while True:
+            response = http.get(
+                "/api/v1/assets",
+                params={
+                    "namespace": args.namespace,
+                    "assetKind": AssetKind.DATASET.value,
+                    "limit": limit,
+                    "offset": offset,
+                },
+            )
+            response.raise_for_status()
+            payload = response.json()
+            items = [
+                item
+                for item in payload.get("assets", [])
+                if not str(item.get("namespace", "")).startswith("inmemory://")
+            ]
+            datasets.extend(items)
+            total_count += len(items)
+            if offset + limit >= payload.get("totalCount", 0):
+                break
+            offset += limit
+    render(
+        {"datasets": datasets, "totalCount": total_count},
+        json_output=args.json,
+        human_renderer=render_dataset_list,
+    )
+
+
+def cmd_dataset_show_latest_version(args: argparse.Namespace) -> None:
+    config = load_cli_config()
+    base_url = resolve_base_url(args, config)
+    with client(base_url) as http:
+        dataset_response = http.get(
+            f"/api/v1/namespaces/{args.namespace}/datasets/{args.name}"
+        )
+        dataset_response.raise_for_status()
+        dataset_payload = dataset_response.json()
+
+        response = http.get(
+            f"/api/v1/namespaces/{args.namespace}/datasets/{args.name}/versions",
+            params={"limit": 1, "offset": 0},
+        )
+        response.raise_for_status()
+        payload = response.json()
+        versions = payload.get("versions", [])
+        if not versions:
+            raise ValueError("dataset version not found")
+        merged = dict(versions[0])
+        merged["facets"] = {
+            **(dataset_payload.get("facets") or {}),
+            **(versions[0].get("facets") or {}),
+        }
+        render(
+            merged,
+            json_output=args.json,
+            human_renderer=render_dataset_latest_version,
+        )
+
+
+def cmd_dataset_rename(args: argparse.Namespace) -> None:
+    config = load_cli_config()
+    base_url = resolve_base_url(args, config)
+    with client(base_url) as http:
+        asset = http.get(
+            f"/api/v1/namespaces/{args.namespace}/datasets/{args.name}"
+        )
+        asset.raise_for_status()
+        asset_id = asset.json()["catalogId"]
+        response = http.patch(
+            f"/api/v1/assets/{asset_id}",
+            json={"name": args.new_name},
+        )
+        response.raise_for_status()
+        render(response.json(), json_output=args.json, human_renderer=render_dataset)
 
 
 def cmd_worker_dj(args: argparse.Namespace) -> None:

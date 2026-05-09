@@ -403,7 +403,7 @@ outputs:
 - 认领 `dj_recipe` 类型任务
 - 将 submission 中的参数合并进 recipe，生成本地 `recipe.yaml`
 - 运行 `dj-process`
-- 持续上报 task log、artifact、任务状态
+- 注册日志文件 artifact、其他 artifact 和任务状态
 
 常见参数：
 - `--base-url`
@@ -426,7 +426,7 @@ outputs:
 dj-process --config /.../tasks/<task_id>/recipe.yaml
 ```
 
-6. 把日志写入 `task_logs`
+6. 把执行输出写入本地日志文件，并把日志文件注册为 `LOG` artifact
 7. 把物化后的 recipe 作为 `CONFIG` artifact 上报
 8. 根据执行结果调用 `start` / `complete` / `fail`
 
@@ -456,7 +456,7 @@ dj-panel worker dj \
 - 周期性上报 heartbeat
 - 认领 `training` 类型任务
 - 在 task 指定的 `workdir` 中直接执行 `command`
-- 持续上报 task log、任务状态
+- 注册日志文件 artifact 并更新任务状态
 
 常见参数：
 - `--base-url`
@@ -485,7 +485,7 @@ dj-panel worker train \
 - 周期性上报 heartbeat
 - 认领 `evaluation` 类型任务
 - 在 task 指定的 `workdir` 中直接执行 `command`
-- 持续上报 task log、任务状态
+- 注册日志文件 artifact 并更新任务状态
 
 常见参数：
 - `--base-url`
@@ -620,7 +620,7 @@ dj-panel run submit --workspace llm-team --kind training --spec ./train_spec.yam
 dj-panel worker train --workspace llm-team --worker-id train-node-01 --workdir /tmp/dj-train-worker --poll-interval 5
 ```
 
-5. 通过 task logs 观察训练输出
+5. 通过 task artifacts 中的日志文件观察训练输出
 
 ### 10. 当前边界
 
@@ -1023,7 +1023,7 @@ Purpose:
 - Claim tasks of type `dj_recipe`
 - Merge submission parameters into the recipe and materialize a local `recipe.yaml`
 - Run `dj-process`
-- Report task logs, artifacts, and task transitions back to the backend
+- Register log file artifacts, other artifacts, and task transitions back to the backend
 
 Common arguments:
 - `--base-url`
@@ -1046,7 +1046,7 @@ Key behavior:
 dj-process --config /.../tasks/<task_id>/recipe.yaml
 ```
 
-6. Stream logs into `task_logs`
+6. Write execution output to a local log file and register it as a `LOG` artifact
 7. Report the materialized recipe as a `CONFIG` artifact
 8. Transition the task through `start`, `complete`, or `fail`
 
@@ -1076,7 +1076,7 @@ Purpose:
 - Send periodic heartbeats
 - Claim tasks of type `training`
 - Execute the task `command` directly in the declared `workdir`
-- Report task logs and task transitions back to the backend
+- Register log file artifacts and task transitions back to the backend
 
 Common arguments:
 - `--base-url`
@@ -1105,7 +1105,7 @@ Purpose:
 - Send periodic heartbeats
 - Claim tasks of type `evaluation`
 - Execute the task `command` directly in the declared `workdir`
-- Report task logs and task transitions back to the backend
+- Register log file artifacts and task transitions back to the backend
 
 Common arguments:
 - `--base-url`
@@ -1240,7 +1240,7 @@ dj-panel run submit --workspace llm-team --kind training --spec ./train_spec.yam
 dj-panel worker train --workspace llm-team --worker-id train-node-01 --workdir /tmp/dj-train-worker --poll-interval 5
 ```
 
-5. Inspect training output through task logs
+5. Inspect training output through log file artifacts attached to the task attempt
 
 ### 10. Current Boundaries
 

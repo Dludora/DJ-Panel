@@ -170,7 +170,7 @@ What it covers:
 
 - the target data model by domain
 - what tables belong to organization, authoring, lineage, and dispatch
-- why lineage runtime facts and orchestration metadata should not be duplicated
+- why lineage runtime facts and orchestration state should not be duplicated
 
 What it does not cover:
 
@@ -181,7 +181,7 @@ What it does not cover:
 Use it when:
 
 - changing table ownership or adding a new table
-- checking whether a concept belongs in lineage projection or tool metadata
+- checking whether a concept belongs in asset catalog, lineage projection, or orchestration state
 - planning future schema evolution
 
 ### [DJ_WORKER_PAYLOAD_AND_SEQUENCE.md](./DJ_WORKER_PAYLOAD_AND_SEQUENCE.md)

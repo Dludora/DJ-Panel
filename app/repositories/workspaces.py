@@ -7,7 +7,7 @@ from sqlalchemy.engine import Connection
 
 from app.db.schema import workspace_members, workspaces
 from app.db.rows import WorkspaceMemberRow, WorkspaceRow
-from app.repositories.utils import new_id, utc_now
+from app.utils.common_utils import new_id, utc_now
 
 
 class WorkspaceRepository:

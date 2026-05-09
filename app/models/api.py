@@ -6,7 +6,7 @@ from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.constant import RunSubmissionKind, TaskKind
+from app.models.constant import AssetKind, RunSubmissionKind, TaskKind
 
 
 class RequestModel(BaseModel):
@@ -215,6 +215,9 @@ class TaskAttemptResponse(ApiModel):
     failure_reason: Optional[str] = Field(default=None, alias="failureReason")
     created_at: datetime = Field(alias="createdAt")
     updated_at: datetime = Field(alias="updatedAt")
+    execution_link: Optional["ExecutionLinkResponse"] = Field(
+        default=None, alias="executionLink"
+    )
 
 
 class TaskResponse(ApiModel):
@@ -280,8 +283,8 @@ class TaskArtifactCreateRequest(RequestModel):
     name: str
     uri: str
     metadata: dict[str, Any] = Field(default_factory=dict)
-    dataset_id: Optional[str] = Field(default=None, alias="datasetId")
-    dataset_version_id: Optional[str] = Field(default=None, alias="datasetVersionId")
+    asset_id: Optional[str] = Field(default=None, alias="datasetId")
+    asset_version_id: Optional[str] = Field(default=None, alias="datasetVersionId")
     model_uri: Optional[str] = Field(default=None, alias="modelUri")
 
 
@@ -292,14 +295,34 @@ class TaskArtifactResponse(ApiModel):
     name: str
     uri: str
     metadata: dict[str, Any] = Field(default_factory=dict)
-    dataset_id: Optional[str] = Field(default=None, alias="datasetId")
-    dataset_version_id: Optional[str] = Field(default=None, alias="datasetVersionId")
+    asset_id: Optional[str] = Field(default=None, alias="datasetId")
+    asset_version_id: Optional[str] = Field(default=None, alias="datasetVersionId")
     model_uri: Optional[str] = Field(default=None, alias="modelUri")
     created_at: datetime = Field(alias="createdAt")
 
 
 class TaskArtifactsResponse(ApiModel):
     artifacts: list[TaskArtifactResponse] = Field(default_factory=list)
+
+
+class AssetCreateRequest(RequestModel):
+    namespace: str
+    name: str
+    asset_kind: AssetKind = Field(default=AssetKind.DATASET, alias="assetKind")
+    description: str = ""
+    facets: dict[str, Any] = Field(default_factory=dict)
+
+
+class AssetRenameRequest(RequestModel):
+    name: str
+
+
+class AssetVersionCreateRequest(RequestModel):
+    version: str
+    storage_uri: Optional[str] = Field(default=None, alias="storageUri")
+    fields: list[dict[str, Any]] = Field(default_factory=list)
+    facets: dict[str, Any] = Field(default_factory=dict)
+    lifecycle_state: str = Field(default="ACTIVE", alias="lifecycleState")
 
 
 class NamespaceName(ApiModel):
@@ -373,9 +396,11 @@ class JobModel(ApiModel):
 
 
 class DatasetModel(ApiModel):
+    catalog_id: Optional[str] = Field(default=None, alias="catalogId")
     id: NamespaceName
     type: str
-    asset_kind: str = Field(default="DATASET", alias="assetKind")
+    asset_kind: AssetKind = Field(default=AssetKind.DATASET, alias="assetKind")
+    catalog_source: str = Field(default="LINEAGE_DISCOVERED", alias="catalogSource")
     name: str
     physical_name: str = Field(alias="physicalName")
     created_at: datetime = Field(alias="createdAt")
@@ -394,7 +419,7 @@ class DatasetModel(ApiModel):
 class DatasetVersionModel(ApiModel):
     id: VersionedNamespaceName
     type: str
-    asset_kind: str = Field(default="DATASET", alias="assetKind")
+    asset_kind: AssetKind = Field(default=AssetKind.DATASET, alias="assetKind")
     created_by_run: RunModel | None = Field(alias="createdByRun")
     name: str
     physical_name: str = Field(alias="physicalName")
@@ -414,6 +439,18 @@ class DatasetVersionModel(ApiModel):
 class RunFacetsModel(ApiModel):
     run_id: str = Field(alias="runId")
     facets: dict[str, Any] = Field(default_factory=dict)
+
+
+class ExecutionLinkResponse(ApiModel):
+    id: str
+    run_submission_id: Optional[str] = Field(default=None, alias="runSubmissionId")
+    task_id: Optional[str] = Field(default=None, alias="taskId")
+    task_attempt_id: Optional[str] = Field(default=None, alias="taskAttemptId")
+    openlineage_run_id: str = Field(alias="openlineageRunId")
+    lineage_run_id: Optional[str] = Field(default=None, alias="lineageRunId")
+    lineage_job_id: Optional[str] = Field(default=None, alias="lineageJobId")
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
 
 
 class TagsResponse(ApiModel):
@@ -444,6 +481,20 @@ class DatasetVersionsResponse(ApiModel):
     total_count: int = Field(alias="totalCount")
 
 
+AssetModel = DatasetModel
+AssetVersionModel = DatasetVersionModel
+
+
+class AssetsResponse(ApiModel):
+    assets: list[AssetModel] = Field(default_factory=list)
+    total_count: int = Field(alias="totalCount")
+
+
+class AssetVersionsResponse(ApiModel):
+    versions: list[AssetVersionModel] = Field(default_factory=list)
+    total_count: int = Field(alias="totalCount")
+
+
 NodeType = Literal["JOB", "DATASET"]
 
 
@@ -467,3 +518,6 @@ class LineageResponse(ApiModel):
 class IngestionResponse(ApiModel):
     status: IngestionStatus = IngestionStatus.ACCEPTED
     projected: bool
+
+
+TaskAttemptResponse.model_rebuild()

@@ -380,18 +380,6 @@ components:
         timeoutSeconds:
           type: integer
 
-    TaskLog:
-      type: object
-      required: [stream, message, sequence]
-      properties:
-        stream:
-          type: string
-          enum: [STDOUT, STDERR]
-        message:
-          type: string
-        sequence:
-          type: integer
-
     TaskArtifact:
       type: object
       required: [artifactType, name, uri]
@@ -1019,32 +1007,7 @@ Current minimal training submission example:
           description: Task failed
 ```
 
-### 5.15 `POST /api/v1/task-attempts/{attempt_id}/logs`
-
-```yaml
-  /api/v1/task-attempts/{attempt_id}/logs:
-    post:
-      tags: [tasks]
-      summary: Append task log line
-      parameters:
-        - in: path
-          name: attempt_id
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TaskLog'
-      responses:
-        '201':
-          description: Log appended
-```
-
-### 5.16 `POST /api/v1/task-attempts/{attempt_id}/artifacts`
+### 5.15 `POST /api/v1/task-attempts/{attempt_id}/artifacts`
 
 ```yaml
   /api/v1/task-attempts/{attempt_id}/artifacts:
@@ -1069,7 +1032,7 @@ Current minimal training submission example:
           description: Artifact registered
 ```
 
-### 5.17 `POST /api/v1/lineage`
+### 5.16 `POST /api/v1/lineage`
 
 ```yaml
   /api/v1/lineage:

@@ -11,7 +11,7 @@ from app.config import get_settings
 from app.db.schema import task_artifacts, task_attempts, tasks
 from app.db.rows import TaskAttemptRow, TaskRow
 from app.models.constant import TaskAttemptStatus, TaskKind, TaskStatus
-from app.repositories.utils import new_id, utc_now
+from app.utils.common_utils import new_id, utc_now
 
 
 class TaskRepository:
@@ -181,8 +181,8 @@ class TaskRepository:
         name: str,
         uri: str,
         metadata: dict,
-        dataset_id: Optional[str],
-        dataset_version_id: Optional[str],
+        asset_id: Optional[str],
+        asset_version_id: Optional[str],
         model_uri: Optional[str],
     ) -> dict:
         artifact_id = new_id()
@@ -195,8 +195,8 @@ class TaskRepository:
                 name=name,
                 uri=uri,
                 metadata_json=metadata,
-                dataset_id=dataset_id,
-                dataset_version_id=dataset_version_id,
+                asset_id=asset_id,
+                asset_version_id=asset_version_id,
                 model_uri=model_uri,
                 created_at=created_at,
             )
@@ -208,8 +208,8 @@ class TaskRepository:
             'name': name,
             'uri': uri,
             'metadata': metadata,
-            'datasetId': dataset_id,
-            'datasetVersionId': dataset_version_id,
+            'asset_id': asset_id,
+            'asset_version_id': asset_version_id,
             'modelUri': model_uri,
             'createdAt': created_at,
         }
@@ -228,8 +228,8 @@ class TaskRepository:
                 'name': row['name'],
                 'uri': row['uri'],
                 'metadata': row['metadata_json'] or {},
-                'datasetId': row['dataset_id'],
-                'datasetVersionId': row['dataset_version_id'],
+                'asset_id': row['asset_id'],
+                'asset_version_id': row['asset_version_id'],
                 'modelUri': row['model_uri'],
                 'createdAt': row['created_at'],
             }

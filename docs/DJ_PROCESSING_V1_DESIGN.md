@@ -78,10 +78,8 @@ For V1, we only need a small set of user-facing concepts.
   A dispatch unit created from a submission.
 - `TaskAttempt`
   A concrete execution attempt.
-- `TaskLog`
-  Execution logs.
 - `TaskArtifact`
-  Registered output artifacts or references.
+  Registered output artifacts or references, including execution log files.
 
 ### 4.3 Important Boundary
 
@@ -171,7 +169,7 @@ When started, it should:
 5. materialize the claimed recipe version locally
 6. construct the Data-Juicer runtime config and command
 7. run Data-Juicer in a controlled work directory
-8. stream stdout and stderr back to the backend
+8. write stdout and stderr to a local log file
 9. register produced artifacts and output references
 10. mark success or failure
 
@@ -382,8 +380,8 @@ The UI should remain the shared source of visibility, even if local authoring co
 - recipe create/list/get/version list
 - worker register/list/heartbeat
 - task claim/get/start/complete/fail/cancel
-- task attempt logs and artifacts
-- lineage ingestion and metadata query
+- task attempt artifacts
+- asset catalog queries, lineage ingestion, and lineage browse queries
 
 ### 12.2 V1 Additions Recommended
 
@@ -423,7 +421,7 @@ V1 should treat `Datasets` as the single data entrypoint.
 
 That means:
 
-- dataset identity comes from projected lineage and managed metadata together
+- dataset identity comes from projected lineage and managed asset-catalog records together
 - dataset location for worker execution comes from `DatasetVersion`
 - users should not have to reason about a separate worker-local dataset root
 

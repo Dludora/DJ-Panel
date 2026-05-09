@@ -7,7 +7,7 @@ from sqlalchemy.engine import Connection
 
 from app.db.schema import recipe_versions, recipes
 from app.db.rows import RecipeRow, RecipeVersionRow
-from app.repositories.utils import new_id, utc_now
+from app.utils.common_utils import new_id, utc_now
 
 
 class RecipeRepository:

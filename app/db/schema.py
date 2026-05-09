@@ -285,12 +285,57 @@ task_artifacts = Table(
     Column("name", String(255), nullable=False),
     Column("uri", Text, nullable=False),
     Column("metadata_json", json_type, nullable=False, server_default="{}"),
-    Column("dataset_id", String(255), nullable=True),
-    Column("dataset_version_id", String(255), nullable=True),
+    Column("asset_id", String(255), nullable=True),
+    Column("asset_version_id", String(255), nullable=True),
     Column("model_uri", Text, nullable=True),
     Column(
         "created_at", DateTime(timezone=True), nullable=False, server_default=func.now()
     ),
+)
+
+execution_links = Table(
+    "execution_links",
+    metadata,
+    Column("id", String(36), primary_key=True),
+    Column(
+        "run_submission_id",
+        String(36),
+        ForeignKey("run_submissions.id", ondelete="CASCADE"),
+        nullable=True,
+    ),
+    Column(
+        "task_id",
+        String(36),
+        ForeignKey("tasks.id", ondelete="CASCADE"),
+        nullable=True,
+    ),
+    Column(
+        "task_attempt_id",
+        String(36),
+        ForeignKey("task_attempts.id", ondelete="CASCADE"),
+        nullable=True,
+    ),
+    Column("openlineage_run_id", String(255), nullable=False),
+    Column(
+        "lineage_run_id",
+        String(36),
+        ForeignKey("runs.id", ondelete="SET NULL"),
+        nullable=True,
+    ),
+    Column(
+        "lineage_job_id",
+        String(36),
+        ForeignKey("jobs.id", ondelete="SET NULL"),
+        nullable=True,
+    ),
+    Column(
+        "created_at", DateTime(timezone=True), nullable=False, server_default=func.now()
+    ),
+    Column(
+        "updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()
+    ),
+    UniqueConstraint("task_attempt_id", name="uq_execution_links_attempt"),
+    UniqueConstraint("openlineage_run_id", name="uq_execution_links_openlineage_run"),
 )
 
 namespaces = Table(
@@ -359,6 +404,18 @@ assets = Table(
     Column("namespace", String(255), nullable=False),
     Column("name", String(255), nullable=False),
     Column("asset_kind", String(64), nullable=False, server_default="DATASET"),
+    Column(
+        "catalog_source",
+        String(32),
+        nullable=False,
+        server_default="LINEAGE_DISCOVERED",
+    ),
+    Column(
+        "current_version_id",
+        String(36),
+        ForeignKey("asset_versions.id", ondelete="SET NULL", use_alter=True),
+        nullable=True,
+    ),
     Column(
         "created_at", DateTime(timezone=True), nullable=False, server_default=func.now()
     ),
@@ -506,12 +563,23 @@ job_facets = Table(
     Column(
         "job_id", String(36), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False
     ),
+    Column(
+        "job_version_id",
+        String(36),
+        ForeignKey("job_versions.id", ondelete="SET NULL"),
+        nullable=True,
+    ),
+    Column(
+        "run_id",
+        String(36),
+        ForeignKey("runs.id", ondelete="CASCADE"),
+        nullable=True,
+    ),
     Column("facet_name", String(255), nullable=False),
     Column("payload", json_type, nullable=False),
     Column(
         "updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()
     ),
-    UniqueConstraint("job_id", "facet_name", name="uq_job_facets_job_name"),
 )
 
 asset_facets = Table(
@@ -524,12 +592,23 @@ asset_facets = Table(
         ForeignKey("assets.id", ondelete="CASCADE"),
         nullable=False,
     ),
+    Column(
+        "asset_version_id",
+        String(36),
+        ForeignKey("asset_versions.id", ondelete="SET NULL"),
+        nullable=True,
+    ),
+    Column(
+        "run_id",
+        String(36),
+        ForeignKey("runs.id", ondelete="CASCADE"),
+        nullable=True,
+    ),
     Column("facet_name", String(255), nullable=False),
     Column("payload", json_type, nullable=False),
     Column(
         "updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()
     ),
-    UniqueConstraint("asset_id", "facet_name", name="uq_asset_facets_asset_name"),
 )
 
 Index("ix_lineage_events_run_id", lineage_events.c.run_id)
@@ -537,6 +616,15 @@ Index("ix_lineage_events_created_at", lineage_events.c.created_at)
 Index("ix_job_versions_current", job_versions.c.job_id, job_versions.c.is_current)
 Index("ix_job_version_io_asset", job_version_io_mapping.c.asset_id)
 Index("ix_runs_job_id", runs.c.job_id)
+Index("ix_job_facets_job", job_facets.c.job_id)
+Index("ix_job_facets_job_version", job_facets.c.job_version_id)
+Index("ix_job_facets_run", job_facets.c.run_id)
+Index("ix_asset_facets_asset", asset_facets.c.asset_id)
+Index("ix_asset_facets_asset_version", asset_facets.c.asset_version_id)
+Index("ix_asset_facets_run", asset_facets.c.run_id)
+Index("ix_execution_links_run_submission", execution_links.c.run_submission_id)
+Index("ix_execution_links_task", execution_links.c.task_id)
+Index("ix_execution_links_openlineage_run", execution_links.c.openlineage_run_id)
 Index(
     "ix_asset_versions_asset",
     asset_versions.c.asset_id,

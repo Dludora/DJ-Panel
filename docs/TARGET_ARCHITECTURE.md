@@ -22,7 +22,7 @@ The tool should instead:
 - ingest OpenLineage events
 - persist raw events
 - project them into queryable tables
-- enrich them with internal-tool metadata
+- enrich them with internal-tool catalog fields, ownership, and facets
 - orchestrate workers and task dispatch
 - expose a user-facing API for collaboration
 
@@ -66,7 +66,7 @@ It answers:
 
 - what executable definition is this
 - what is its stable identity
-- what metadata and facets define it
+- what catalog fields and facets define it
 - what inputs and outputs are associated with its projected versions
 
 Examples:
@@ -125,12 +125,14 @@ Responsibilities:
 - receive OpenLineage events from DJ and MLflow
 - persist raw events
 - project jobs, runs, datasets, versions, and facets
-- support lineage and metadata queries
+- support lineage browse and graph queries
 
-### 6.3 Metadata and Authoring Plane
+### 6.3 Asset Catalog and Authoring Plane
 
 Responsibilities:
 
+- asset catalog ownership of assets and asset versions
+- manual asset registration and enrichment
 - recipe authoring and storage
 - recipe versioning
 - operator-level static metadata
@@ -143,7 +145,7 @@ Responsibilities:
 - worker polling
 - worker claiming
 - launching DJ or training commands
-- streaming logs and artifacts
+- writing local execution log files and registering them as artifacts
 - relying on plugins to emit lineage automatically
 
 ## 7. Tool Modules
@@ -207,7 +209,6 @@ Responsibilities:
 - `Worker`
 - `Task`
 - `TaskAttempt`
-- `TaskLog`
 - `TaskArtifact`
 
 ### 8.3 Recipe Objects
@@ -267,7 +268,7 @@ The master should expose one API surface for:
 - run submissions
 - workers and tasks
 - lineage ingestion
-- metadata and graph queries
+- asset catalog, lineage browse, and graph queries
 
 ### 11.2 Workers
 
@@ -285,7 +286,7 @@ Shared worker primitives:
 - start
 - complete
 - fail
-- log upload
+- log-file artifact registration
 - artifact registration
 
 ### 11.3 Workstation

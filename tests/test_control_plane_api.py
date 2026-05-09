@@ -1,23 +1,37 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.pool import StaticPool
 
 from app.api.dependencies import (
+    get_asset_service,
+    get_lineage_service,
     get_recipe_service,
     get_run_submission_service,
     get_task_service,
     get_worker_service,
     get_workspace_service,
 )
-from app.db.schema import metadata
+from app.db.engine import get_engine
+from app.db.schema import execution_links, metadata
 from app.main import app
+from app.services.assets import AssetService
+from app.services.lineage import LineageService
 from app.services.recipes import RecipeService
 from app.services.run_submissions import RunSubmissionService
 from app.services.tasks import TaskService
 from app.services.workers import WorkerService
 from app.services.workspaces import WorkspaceService
+
+FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def load_event(name: str) -> dict:
+    return json.loads((FIXTURES / name).read_text())
 
 
 def make_client() -> TestClient:
@@ -28,12 +42,16 @@ def make_client() -> TestClient:
         poolclass=StaticPool,
     )
     metadata.create_all(engine)
+    app.dependency_overrides[get_engine] = lambda: engine
+    app.dependency_overrides[get_asset_service] = lambda: AssetService(engine)
+    app.dependency_overrides[get_lineage_service] = lambda: LineageService(engine)
     app.dependency_overrides[get_workspace_service] = lambda: WorkspaceService(engine)
     app.dependency_overrides[get_recipe_service] = lambda: RecipeService(engine)
     app.dependency_overrides[get_run_submission_service] = lambda: RunSubmissionService(engine)
     app.dependency_overrides[get_worker_service] = lambda: WorkerService(engine)
     app.dependency_overrides[get_task_service] = lambda: TaskService(engine)
     client = TestClient(app)
+    client.engine = engine  # type: ignore[attr-defined]
 
     def cleanup() -> None:
         app.dependency_overrides.clear()
@@ -134,6 +152,7 @@ def test_control_plane_happy_path() -> None:
         start_response.raise_for_status()
         assert start_response.json()['status'] == 'RUNNING'
         assert start_response.json()['currentAttempt']['openlineageRunId'] == 'ol-run-1'
+        assert start_response.json()['currentAttempt']['executionLink']['openlineageRunId'] == 'ol-run-1'
 
         artifact_response = client.post(
             f'/api/v1/task-attempts/{attempt_id}/artifacts',
@@ -167,10 +186,16 @@ def test_control_plane_happy_path() -> None:
         tasks = client.get(f"/api/v1/workspaces/{workspace['slug']}/tasks")
         tasks.raise_for_status()
         assert tasks.json()['tasks'][0]['currentAttempt']['openlineageRunId'] == 'ol-run-1'
+        assert tasks.json()['tasks'][0]['currentAttempt']['executionLink']['openlineageRunId'] == 'ol-run-1'
 
         artifacts = client.get(f'/api/v1/task-attempts/{attempt_id}/artifacts')
         artifacts.raise_for_status()
         assert artifacts.json()['artifacts'][0]['kind'] == 'MODEL'
+
+        with client.engine.begin() as conn:  # type: ignore[attr-defined]
+            link = conn.execute(select(execution_links)).mappings().one()
+            assert link['task_attempt_id'] == attempt_id
+            assert link['openlineage_run_id'] == 'ol-run-1'
     finally:
         client.cleanup()  # type: ignore[attr-defined]
 
@@ -300,6 +325,65 @@ def test_training_submission_creates_command_task() -> None:
         assert claim['task']['executionSpec']['workdir'] == '/tmp/llm-trainer'
         assert claim['task']['envVars']['MLFLOW_EXPERIMENT_NAME'] == 'qwen2-sft'
         assert claim['task']['submission']['submissionKind'] == 'training'
+    finally:
+        client.cleanup()  # type: ignore[attr-defined]
+
+
+def test_execution_link_attaches_to_projected_lineage_run() -> None:
+    client = make_client()
+    try:
+        workspace = create_workspace(client, "team-link")
+        recipe = create_recipe(client, workspace["slug"], "link-recipe")
+
+        run_response = client.post(
+            f"/api/v1/workspaces/{workspace['slug']}/run-submissions",
+            json={
+                "recipeVersionId": recipe["currentVersion"]["id"],
+                "requestedBy": "alice",
+                "parameters": {},
+            },
+        )
+        run_response.raise_for_status()
+
+        client.post(
+            f"/api/v1/workspaces/{workspace['slug']}/workers/register",
+            json={
+                "workerId": "worker-link",
+                "displayName": "Worker Link",
+                "labels": {},
+                "capabilities": {},
+                "maxConcurrency": 1,
+            },
+        ).raise_for_status()
+
+        claim = client.post(
+            f"/api/v1/workspaces/{workspace['slug']}/tasks/claim",
+            json={"workerId": "worker-link"},
+        )
+        claim.raise_for_status()
+        payload = claim.json()["task"]
+
+        start = client.post(
+            f"/api/v1/tasks/{payload['taskId']}/start",
+            json={
+                "attemptId": payload["attemptId"],
+                "leaseToken": payload["leaseToken"],
+                "openlineageRunId": "ol-run-attach-1",
+            },
+        )
+        start.raise_for_status()
+        assert start.json()["currentAttempt"]["executionLink"]["lineageRunId"] is None
+
+        event = load_event("run_complete.json")
+        event["run"]["runId"] = "ol-run-attach-1"
+        client.post("/api/v1/lineage", json=event).raise_for_status()
+
+        task = client.get(f"/api/v1/tasks/{payload['taskId']}")
+        task.raise_for_status()
+        link = task.json()["currentAttempt"]["executionLink"]
+        assert link["openlineageRunId"] == "ol-run-attach-1"
+        assert link["lineageRunId"] is not None
+        assert link["lineageJobId"] is not None
     finally:
         client.cleanup()  # type: ignore[attr-defined]
 

@@ -15,7 +15,7 @@ It is the best single-file overview for the project as it exists today.
 Today, the implemented backend is a merged FastAPI service with two connected parts:
 
 - a control-plane for workspaces, recipes, submissions, tasks, and workers
-- a lineage and metadata service for OpenLineage ingestion, lineage graph traversal, and dataset/job/run queries
+- an asset catalog and lineage service for OpenLineage ingestion, projection, lineage graph traversal, and asset/job/run queries
 
 ## 2. Current Product Scope
 
@@ -28,7 +28,7 @@ The practical product scope right now is:
 - command-based training and evaluation worker polling and execution
 - task artifact references, including execution log file artifacts
 - lineage event ingestion from Data-Juicer and MLflow-style producers
-- metadata queries over projected jobs, runs, datasets, dataset versions, and facets
+- asset catalog and lineage browse queries over projected jobs, runs, assets, asset versions, and facets
 
 The backend is still primarily oriented toward the DJ-first V1 path, but it now
 also supports minimal command-based training and evaluation execution.
@@ -86,7 +86,7 @@ Implemented HTTP groups:
 
 - health
 - lineage ingestion and raw lineage event listing
-- metadata queries
+- asset catalog queries and lineage browse queries
 - workspaces and workspace members
 - recipes and recipe versions
 - run submissions
@@ -106,7 +106,8 @@ Broadly, the backend exposes:
 - `POST /api/v1/lineage`
 - `GET /api/v1/lineage`
 - `GET /api/v1/events/lineage`
-- metadata endpoints under `/api/v1/namespaces`, `/api/v1/jobs`, `/api/v1/datasets`
+- asset catalog endpoints under `/api/v1/assets`
+- lineage browse endpoints under `/api/v1/namespaces`, `/api/v1/jobs`, `/api/v1/datasets`
 - workspace endpoints under `/api/v1/workspaces`
 - recipe endpoints under `/api/v1/workspaces/{workspace}/recipes` and `/api/v1/recipes/{id}`
 - run submission endpoints under `/api/v1/workspaces/{workspace}/run-submissions`

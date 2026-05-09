@@ -220,6 +220,75 @@ def build_parser() -> argparse.ArgumentParser:
     add_json_output_flag(run_submit)
     run_submit.set_defaults(command_key="run.submit")
 
+    dataset = subparsers.add_parser("dataset", help="Register datasets and dataset versions")
+    dataset_sub = dataset.add_subparsers(dest="dataset_command", required=True)
+    dataset_register = dataset_sub.add_parser(
+        "register", help="Register a dataset in the catalog"
+    )
+    add_base_url_flag(dataset_register)
+    dataset_register.add_argument("--namespace", required=True)
+    dataset_register.add_argument("--name", required=True)
+    dataset_register.add_argument("--description", default="")
+    dataset_register.add_argument(
+        "--facets",
+        default=None,
+        help="YAML/JSON object or file describing dataset facets",
+    )
+    dataset_register.add_argument(
+        "--dj-input-config",
+        default=None,
+        help="YAML/JSON object or file used as facets.datajuicerInput.inputConfig",
+    )
+    add_json_output_flag(dataset_register)
+    dataset_register.set_defaults(command_key="dataset.register")
+
+    dataset_list = dataset_sub.add_parser("list", help="List registered datasets")
+    add_base_url_flag(dataset_list)
+    dataset_list.add_argument("--namespace", default=None)
+    dataset_list.add_argument("--limit", type=int, default=100)
+    add_json_output_flag(dataset_list)
+    dataset_list.set_defaults(command_key="dataset.list")
+
+    dataset_version_register = dataset_sub.add_parser(
+        "version-register", help="Register a dataset version"
+    )
+    add_base_url_flag(dataset_version_register)
+    dataset_version_register.add_argument("--namespace", required=True)
+    dataset_version_register.add_argument("--name", required=True)
+    dataset_version_register.add_argument("--version", required=True)
+    dataset_version_register.add_argument("--storage-uri", default=None)
+    dataset_version_register.add_argument(
+        "--fields",
+        default=None,
+        help="YAML/JSON list or object containing a 'fields' list",
+    )
+    dataset_version_register.add_argument(
+        "--facets",
+        default=None,
+        help="YAML/JSON object or file describing version facets",
+    )
+    dataset_version_register.add_argument("--lifecycle-state", default="ACTIVE")
+    add_json_output_flag(dataset_version_register)
+    dataset_version_register.set_defaults(command_key="dataset.version-register")
+
+    dataset_show_latest_version = dataset_sub.add_parser(
+        "show",
+        help="Show the latest dataset version fields and key facets",
+    )
+    add_base_url_flag(dataset_show_latest_version)
+    dataset_show_latest_version.add_argument("--namespace", required=True)
+    dataset_show_latest_version.add_argument("--name", required=True)
+    add_json_output_flag(dataset_show_latest_version)
+    dataset_show_latest_version.set_defaults(command_key="dataset.show")
+
+    dataset_rename = dataset_sub.add_parser("rename", help="Rename a dataset")
+    add_base_url_flag(dataset_rename)
+    dataset_rename.add_argument("--namespace", required=True)
+    dataset_rename.add_argument("--name", required=True)
+    dataset_rename.add_argument("--new-name", required=True)
+    add_json_output_flag(dataset_rename)
+    dataset_rename.set_defaults(command_key="dataset.rename")
+
     worker = subparsers.add_parser("worker", help="Run task execution workers")
     worker_sub = worker.add_subparsers(dest="worker_kind", required=True)
     worker_dj = worker_sub.add_parser("dj", help="Run a Data-Juicer worker")

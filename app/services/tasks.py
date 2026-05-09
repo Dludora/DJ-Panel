@@ -4,6 +4,7 @@ from sqlalchemy.engine import Engine
 from typing import Optional
 
 from app.models.api import (
+    ExecutionLinkResponse,
     TaskArtifactResponse,
     TaskArtifactsResponse,
     TaskAttemptResponse,
@@ -18,6 +19,7 @@ from app.models.constant import (
     TaskKind,
     TaskStatus,
 )
+from app.repositories.execution_links import ExecutionLinkRepository
 from app.repositories.recipes import RecipeRepository
 from app.repositories.run_submissions import RunSubmissionRepository
 from app.repositories.tasks import TaskRepository
@@ -32,6 +34,7 @@ class TaskService:
         self.recipe_repo = RecipeRepository()
         self.submission_repo = RunSubmissionRepository()
         self.task_repo = TaskRepository()
+        self.execution_link_repo = ExecutionLinkRepository()
         self.worker_repo = WorkerRepository()
 
     def list_tasks(self, workspace_slug: str) -> dict:
@@ -112,6 +115,14 @@ class TaskService:
                 started_at=task.started_at,
                 root_lineage_node_id=payload.root_lineage_node_id,
             )
+            if payload.openlineage_run_id:
+                self.execution_link_repo.upsert_execution_link(
+                    conn,
+                    run_submission_id=task.run_submission_id,
+                    task_id=task.id,
+                    task_attempt_id=attempt.id,
+                    openlineage_run_id=payload.openlineage_run_id,
+                )
             return self._task_response(conn, task, attempt).to_api_dict()
 
     def complete_task(self, task_id: str, payload) -> dict:
@@ -133,6 +144,14 @@ class TaskService:
                 ended_at=task.ended_at,
                 root_lineage_node_id=payload.root_lineage_node_id,
             )
+            if payload.openlineage_run_id:
+                self.execution_link_repo.upsert_execution_link(
+                    conn,
+                    run_submission_id=task.run_submission_id,
+                    task_id=task.id,
+                    task_attempt_id=attempt.id,
+                    openlineage_run_id=payload.openlineage_run_id,
+                )
             return self._task_response(conn, task, attempt).to_api_dict()
 
     def fail_task(self, task_id: str, payload) -> dict:
@@ -156,6 +175,14 @@ class TaskService:
                 failure_reason=payload.failure_reason,
                 root_lineage_node_id=payload.root_lineage_node_id,
             )
+            if payload.openlineage_run_id:
+                self.execution_link_repo.upsert_execution_link(
+                    conn,
+                    run_submission_id=task.run_submission_id,
+                    task_id=task.id,
+                    task_attempt_id=attempt.id,
+                    openlineage_run_id=payload.openlineage_run_id,
+                )
             return self._task_response(conn, task, attempt).to_api_dict()
 
     def cancel_task(self, task_id: str, payload) -> dict:
@@ -190,8 +217,8 @@ class TaskService:
                 payload.name,
                 payload.uri,
                 payload.metadata,
-                payload.dataset_id,
-                payload.dataset_version_id,
+                payload.asset_id,
+                payload.asset_version_id,
                 payload.model_uri,
             )
             return TaskArtifactResponse(**artifact).to_api_dict()
@@ -208,6 +235,9 @@ class TaskService:
             self.task_repo.get_attempt_by_id(conn, task.current_attempt_id)
             if task.current_attempt_id
             else None
+        )
+        execution_link = (
+            self.execution_link_repo.get_by_attempt_id(conn, attempt.id) if attempt else None
         )
         return TaskResponse(
             id=task.id,
@@ -230,7 +260,9 @@ class TaskService:
             startedAt=task.started_at,
             endedAt=task.ended_at,
             failureReason=task.failure_reason,
-            currentAttempt=self._attempt_response(attempt) if attempt else None,
+            currentAttempt=(
+                self._attempt_response(attempt, execution_link) if attempt else None
+            ),
         )
 
     @staticmethod
@@ -262,7 +294,7 @@ class TaskService:
         }
 
     @staticmethod
-    def _attempt_response(attempt) -> TaskAttemptResponse:
+    def _attempt_response(attempt, execution_link=None) -> TaskAttemptResponse:
         return TaskAttemptResponse(
             id=attempt.id,
             taskId=attempt.task_id,
@@ -277,6 +309,21 @@ class TaskService:
             failureReason=attempt.failure_reason,
             createdAt=attempt.created_at,
             updatedAt=attempt.updated_at,
+            executionLink=(
+                ExecutionLinkResponse(
+                    id=execution_link.id,
+                    runSubmissionId=execution_link.run_submission_id,
+                    taskId=execution_link.task_id,
+                    taskAttemptId=execution_link.task_attempt_id,
+                    openlineageRunId=execution_link.openlineage_run_id,
+                    lineageRunId=execution_link.lineage_run_id,
+                    lineageJobId=execution_link.lineage_job_id,
+                    createdAt=execution_link.created_at,
+                    updatedAt=execution_link.updated_at,
+                )
+                if execution_link
+                else None
+            ),
         )
 
     @staticmethod

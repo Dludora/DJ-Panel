@@ -9,7 +9,7 @@ from sqlalchemy.engine import Connection
 from app.db.schema import worker_heartbeats, workers
 from app.db.rows import WorkerRow
 from app.models.constant import WorkerStatus
-from app.repositories.utils import new_id, utc_now
+from app.utils.common_utils import new_id, utc_now
 
 
 class WorkerRepository:

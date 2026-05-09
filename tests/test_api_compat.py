@@ -9,15 +9,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
-from app.api.routes.lineage import get_ingestion_service, get_lineage_query_service
-from app.api.routes.metadata import get_metadata_service
+from app.api.dependencies import get_asset_service, get_lineage_service
 from app.db.engine import get_engine
 from app.db.schema import metadata
 from app.main import app
 from app.models.api import IngestionStatus
-from app.services.ingestion import IngestionService
-from app.services.lineage_query import LineageQueryService
-from app.services.metadata import MetadataService
+from app.services.assets import AssetService
+from app.services.lineage import LineageService
 
 FIXTURES = Path(__file__).parent / 'fixtures'
 
@@ -36,9 +34,8 @@ def client():
     )
     metadata.create_all(engine)
     app.dependency_overrides[get_engine] = lambda: engine
-    app.dependency_overrides[get_ingestion_service] = lambda: IngestionService(engine)
-    app.dependency_overrides[get_lineage_query_service] = lambda: LineageQueryService(engine)
-    app.dependency_overrides[get_metadata_service] = lambda: MetadataService(engine)
+    app.dependency_overrides[get_lineage_service] = lambda: LineageService(engine)
+    app.dependency_overrides[get_asset_service] = lambda: AssetService(engine)
     try:
         yield TestClient(app)
     finally:
@@ -91,17 +88,21 @@ def test_lineage_and_metadata_endpoints_are_marquez_friendly(client: TestClient)
     datasets = client.get('/api/v1/namespaces/demo/datasets', params={'limit': 20, 'offset': 0})
     assert datasets.status_code == 200
     datasets_payload = datasets.json()
-    assert datasets_payload['totalCount'] == 2
-    assert {item['name'] for item in datasets_payload['datasets']} == {'training_dataset', 'model_artifact'}
+    assert datasets_payload['totalCount'] == 1
+    assert {item['name'] for item in datasets_payload['datasets']} == {'training_dataset'}
 
-    dataset = client.get('/api/v1/namespaces/demo/datasets/model_artifact')
+    dataset = client.get('/api/v1/namespaces/demo/assets/model_artifact', params={'assetKind': 'MODEL'})
     assert dataset.status_code == 200
     dataset_payload = dataset.json()
     assert dataset_payload['type'] == 'DB_TABLE'
+    assert dataset_payload['assetKind'] == 'MODEL'
     assert dataset_payload['facets']['mlflow_model']['artifact_type'] == 'model'
     assert dataset_payload['columnLineage'] is None
 
-    versions = client.get('/api/v1/namespaces/demo/datasets/model_artifact/versions', params={'limit': 10, 'offset': 0})
+    versions = client.get(
+        '/api/v1/namespaces/demo/assets/model_artifact/versions',
+        params={'assetKind': 'MODEL', 'limit': 10, 'offset': 0},
+    )
     assert versions.status_code == 200
     assert versions.json()['totalCount'] == 1
     assert versions.json()['versions'][0]['createdByRun']['id'] == 'run-001'
@@ -121,6 +122,109 @@ def test_lineage_and_metadata_endpoints_are_marquez_friendly(client: TestClient)
     tags = client.get('/api/v1/tags')
     assert tags.status_code == 200
     assert tags.json() == {'tags': []}
+
+
+def test_asset_registration_and_lineage_enrichment_share_same_catalog_entry(client: TestClient) -> None:
+    asset_response = client.post(
+        "/api/v1/assets",
+        json={
+            "namespace": "demo",
+            "name": "manually_registered_model",
+            "assetKind": "MODEL",
+            "description": "registered first",
+            "facets": {
+                "mlflow_model": {
+                    "registry_stage": "staging",
+                    "artifact_type": "model",
+                }
+            },
+        },
+    )
+    assert asset_response.status_code == 201
+    asset = asset_response.json()
+    assert asset["catalogSource"] == "USER_REGISTERED"
+    assert asset["assetKind"] == "MODEL"
+
+    version_response = client.post(
+        f"/api/v1/assets/{asset['catalogId']}/versions",
+        json={
+            "version": "v1",
+            "storageUri": "s3://models/manual/v1",
+            "fields": [{"name": "artifact_path", "type": "string"}],
+            "facets": {"mlflow_model": {"registry_stage": "staging"}},
+            "lifecycleState": "ACTIVE",
+        },
+    )
+    assert version_response.status_code == 201
+    assert version_response.json()["storageUri"] == "s3://models/manual/v1"
+
+    payload = load_event("dataset_event.json")
+    payload["dataset"]["namespace"] = "demo"
+    payload["dataset"]["name"] = "manually_registered_model"
+    payload["dataset"]["facets"]["mlflow_model"] = {
+        "registry_stage": "production",
+        "artifact_type": "model",
+    }
+    client.post("/api/v1/lineage", json=payload).raise_for_status()
+
+    asset_after = client.get(
+        "/api/v1/namespaces/demo/assets/manually_registered_model",
+        params={"assetKind": "MODEL"},
+    )
+    assert asset_after.status_code == 200
+    assert asset_after.json()["catalogSource"] == "USER_REGISTERED"
+    assert asset_after.json()["facets"]["mlflow_model"]["registry_stage"] == "production"
+
+
+def test_asset_kind_filters_support_assets_and_dataset_compat_views(client: TestClient) -> None:
+    client.post(
+        "/api/v1/assets",
+        json={
+            "namespace": "demo",
+            "name": "training_dataset",
+            "facets": {},
+        },
+    ).raise_for_status()
+    client.post(
+        "/api/v1/assets",
+        json={
+            "namespace": "demo",
+            "name": "trained_model",
+            "assetKind": "MODEL",
+            "facets": {"mlflow_model": {"artifact_type": "model"}},
+        },
+    ).raise_for_status()
+
+    all_assets = client.get("/api/v1/assets", params={"namespace": "demo", "limit": 20, "offset": 0})
+    assert all_assets.status_code == 200
+    assert {item["name"] for item in all_assets.json()["assets"]} == {
+        "training_dataset",
+        "trained_model",
+    }
+
+    model_assets = client.get(
+        "/api/v1/assets",
+        params={"namespace": "demo", "assetKind": "MODEL", "limit": 20, "offset": 0},
+    )
+    assert model_assets.status_code == 200
+    assert [item["name"] for item in model_assets.json()["assets"]] == ["trained_model"]
+
+    model_asset = client.get(
+        "/api/v1/namespaces/demo/assets/trained_model",
+        params={"assetKind": "MODEL"},
+    )
+    assert model_asset.status_code == 200
+    assert model_asset.json()["assetKind"] == "MODEL"
+
+    dataset_list = client.get(
+        "/api/v1/namespaces/demo/datasets",
+        params={"limit": 20, "offset": 0},
+    )
+    assert dataset_list.status_code == 200
+    assert [item["name"] for item in dataset_list.json()["datasets"]] == ["training_dataset"]
+
+    dataset_get = client.get("/api/v1/namespaces/demo/datasets/trained_model")
+    assert dataset_get.status_code == 404
 
 
 def test_lineage_endpoint_accepts_static_job_and_dataset_events(client: TestClient) -> None:
@@ -194,7 +298,7 @@ def test_dataset_routes_support_path_like_dataset_names(client: TestClient) -> N
         params={'limit': 10, 'offset': 0},
     )
     assert versions_response.status_code == 200
-    assert versions_response.json()['totalCount'] == 0
+    assert versions_response.json()['totalCount'] == 1
 
 
 def test_lineage_endpoint_accepts_depth_six_for_marquez_web(client: TestClient) -> None:
@@ -241,3 +345,25 @@ def test_routes_and_lineage_support_path_like_namespaces(client: TestClient) -> 
     )
     assert lineage_response.status_code == 200
     assert lineage_response.json()['graph'][0]['id'] == f'dataset:{namespace}:{dataset_name}'
+
+
+def test_dataset_can_be_renamed_via_asset_patch(client: TestClient) -> None:
+    created = client.post(
+        '/api/v1/assets',
+        json={
+            'namespace': 'demo',
+            'name': 'old_dataset_name',
+            'assetKind': 'DATASET',
+            'facets': {},
+        },
+    )
+    assert created.status_code == 201
+    asset_id = created.json()['catalogId']
+
+    renamed = client.patch(f'/api/v1/assets/{asset_id}', json={'name': 'new_dataset_name'})
+    assert renamed.status_code == 200
+    assert renamed.json()['name'] == 'new_dataset_name'
+
+    lookup = client.get('/api/v1/namespaces/demo/datasets/new_dataset_name')
+    assert lookup.status_code == 200
+    assert lookup.json()['name'] == 'new_dataset_name'

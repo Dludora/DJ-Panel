@@ -3,9 +3,9 @@
 Merged backend for DJ Panel, combining:
 
 - workspace-aware control-plane orchestration
-- OpenLineage ingestion
-- lineage graph queries
-- Marquez-style metadata endpoints
+- asset catalog management
+- OpenLineage event ingestion and projection
+- lineage browse and graph queries
 
 This service currently covers:
 - workspaces
@@ -16,8 +16,8 @@ This service currently covers:
 - atomic task claiming
 - execution log file artifacts and other artifact references
 - lineage/MLflow linkage fields on task attempts
-- lineage event ingestion
-- metadata projection for jobs, runs, datasets, versions, and facets
+- lineage event ingestion and projection
+- asset catalog and lineage browse APIs for jobs, runs, assets, versions, and facets
 
 ## Docs
 
@@ -147,7 +147,7 @@ when you want the raw API payload.
 3. Create a run submission in that workspace
 4. Register a worker
 5. Worker claims the pending task
-6. Worker starts, logs, uploads artifacts, and completes or fails
+6. Worker starts, writes local log files, registers artifacts, and completes or fails
 
 ## Worker client
 
