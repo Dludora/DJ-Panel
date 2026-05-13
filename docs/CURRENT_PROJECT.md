@@ -78,6 +78,10 @@ Implemented:
 - `dj-panel recipe show`
 - `dj-panel recipe publish`
 - `dj-panel run submit`
+- `dj-panel run list`
+- `dj-panel run show`
+- `dj-panel run resume`
+- `dj-panel run cancel`
 - `dj-panel worker dj`
 - `dj-panel worker train`
 - `dj-panel worker eval`
@@ -153,9 +157,10 @@ Current DJ behavior:
 - worker registers itself
 - worker heartbeats
 - worker only claims `taskKind = dj_recipe`
-- worker materializes `recipe.yaml` locally
-- worker runs `dj-process --config <materialized recipe>`
-- worker writes execution output to a local log file and records it as an artifact
+- worker materializes `recipe.yaml` locally under `<workdir>/tasks/<task_id>/`
+- worker runs `dj-process --config <materialized recipe> --job_id <task_id>`
+- worker aligns DJ `work_dir` to the same task directory, so `task_id == DJ job_id` and `task_dir == DJ final work_dir`
+- worker writes execution output to `<workdir>/tasks/<task_id>/run.log` and records it as an artifact
 - worker records the materialized config as a task artifact
 - worker marks task success or failure
 
@@ -208,7 +213,8 @@ Submit run:
 ```bash
 dj-panel run submit \
   --workspace llm-team \
-  --recipe lineage_base \
+  --kind processing \
+  --spec ./process_spec.yaml \
   --requested-by alice
 ```
 
@@ -231,6 +237,27 @@ dj-panel run submit \
   --spec ./eval_spec.yaml \
   --requested-by alice
 ```
+
+List and inspect runs:
+
+```bash
+dj-panel run list --workspace llm-team
+dj-panel run show <submission_id>
+```
+
+Run lifecycle helpers:
+
+```bash
+dj-panel run resume <failed_or_cancelled_submission_id>
+dj-panel run cancel <pending_submission_id>
+```
+
+Current run lifecycle boundaries:
+
+- `run resume` only supports `FAILED` and `CANCELLED`
+- `run cancel` only supports `PENDING`
+- `run cancel` cancels the submission and its derived task together
+- `run logs` is not implemented yet
 
 Run DJ worker:
 

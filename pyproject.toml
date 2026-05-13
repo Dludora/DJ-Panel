@@ -31,10 +31,10 @@ url = "https://mirrors.aliyun.com/pypi/simple/"
 default = true
 
 [project.scripts]
-dj-panel = "cli:main"
+dj-panel = "dj_panel.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["app*", "cli*"]
+include = ["dj_panel*"]
 
 [tool.pytest.ini_options]
 addopts = "-q"

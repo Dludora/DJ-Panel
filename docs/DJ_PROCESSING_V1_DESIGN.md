@@ -104,7 +104,7 @@ dj-panel master
 Development fallback:
 
 ```bash
-uvicorn app.main:app --reload
+uvicorn dj_panel.app.main:app --reload
 ```
 
 ### 5.2 DJ Worker Command
@@ -126,7 +126,7 @@ This is better than a generic `dj-panel-worker` because V1 is intentionally scop
 Argument meaning:
 
 - `workdir`
-  Local scratch space for one worker process. This is only for temporary execution files such as materialized recipe configs, transient logs, and task-local cache.
+  Local root for worker-managed task directories. Each DJ task runs under `<workdir>/tasks/<task_id>`, and that same directory is passed to Data-Juicer as its final `work_dir`.
 - `dj-bin`
   The Data-Juicer executable available in the current environment. In most cases this should be `dj-process`.
 
@@ -169,9 +169,17 @@ When started, it should:
 5. materialize the claimed recipe version locally
 6. construct the Data-Juicer runtime config and command
 7. run Data-Juicer in a controlled work directory
-8. write stdout and stderr to a local log file
+8. write stdout and stderr to `<workdir>/tasks/<task_id>/run.log`
 9. register produced artifacts and output references
 10. mark success or failure
+
+Current worker directory alignment:
+
+- `task_id == DJ job_id`
+- `task_dir = <worker_workdir>/tasks/<task_id>`
+- `task_dir == DJ final work_dir`
+- panel keeps `recipe.yaml` and `run.log`
+- DJ keeps its own `cli.yaml`, `events_*.jsonl`, `logs/`, `ckpt/checkpoints`, `processed.jsonl`, and `metadata/`
 
 The worker should not be responsible for producing custom lineage logic. It should rely on the installed Data-Juicer OpenLineage plugin.
 

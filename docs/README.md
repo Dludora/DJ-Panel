@@ -26,13 +26,17 @@ If you are new to the project, read in this order:
    Read this for the scoped V1 Data-Juicer product design.
 4. [CLI_REFERENCE.md](./CLI_REFERENCE.md)
    Use this when working on `dj-panel` commands, CLI defaults, or operator workflows.
-5. [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md)
+5. [RUN_SUBMISSION_SPEC.md](./RUN_SUBMISSION_SPEC.md)
+   Use this when working on `run submit`, especially the processing spec-first path.
+6. [SFT_MLFLOW_LINEAGE_DESIGN.md](./SFT_MLFLOW_LINEAGE_DESIGN.md)
+   Use this when planning MLflow-based SFT train/eval lineage coverage.
+7. [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md)
    Use this when configuring runtime defaults, deployment environments, or operator startup scripts.
-6. [V1_API_OPENAPI_STYLE.md](./V1_API_OPENAPI_STYLE.md)
+8. [V1_API_OPENAPI_STYLE.md](./V1_API_OPENAPI_STYLE.md)
    Use this when working on frontend-backend contracts or CLI-facing resource shapes.
-7. [DATABASE_SCHEMA_DRAFT.md](./DATABASE_SCHEMA_DRAFT.md)
+9. [DATABASE_SCHEMA_DRAFT.md](./DATABASE_SCHEMA_DRAFT.md)
    Use this when changing persistence or reasoning about data ownership.
-8. [DJ_WORKER_PAYLOAD_AND_SEQUENCE.md](./DJ_WORKER_PAYLOAD_AND_SEQUENCE.md)
+10. [DJ_WORKER_PAYLOAD_AND_SEQUENCE.md](./DJ_WORKER_PAYLOAD_AND_SEQUENCE.md)
    Use this when changing worker execution or task claim payloads.
 
 ## Document Boundaries
@@ -121,6 +125,36 @@ Use it when:
 - onboarding someone to the CLI
 - adding or refactoring CLI commands
 - checking how a user is expected to operate the backend from the terminal
+
+### [RUN_SUBMISSION_SPEC.md](./RUN_SUBMISSION_SPEC.md)
+
+What it covers:
+
+- the current run-submission CLI shape
+- the processing spec-first contract
+- how `workspace_recipe` and `local_file` processing specs work
+- where training/evaluation still differ
+
+Use it when:
+
+- changing `run submit`
+- designing new submission kinds
+- reviewing processing spec examples
+
+### [SFT_MLFLOW_LINEAGE_DESIGN.md](./SFT_MLFLOW_LINEAGE_DESIGN.md)
+
+What it covers:
+
+- the target MLflow + OpenLineage coverage for SFT training and evaluation
+- what `mlflow-openlineage` already emits automatically
+- which dataset/model/report lineage events still need explicit emission
+- reference example script locations
+
+Use it when:
+
+- planning LLM training/eval lineage
+- reviewing MLflow instrumentation scope
+- implementing SFT example scripts
 
 ### [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md)
 

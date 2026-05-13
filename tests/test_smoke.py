@@ -1,5 +1,5 @@
-from app.models.protocols.openlineage import DatasetEvent, JobEvent, RunEvent
-from app.utils.openlineage_utils import parse_event, resolve_event_model
+from dj_panel.app.models.protocols.openlineage import DatasetEvent, JobEvent, RunEvent
+from dj_panel.app.utils.openlineage_utils import parse_event, resolve_event_model
 
 
 def test_default_run_event_is_selected_from_shape() -> None:

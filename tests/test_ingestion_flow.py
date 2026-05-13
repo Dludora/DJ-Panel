@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.pool import StaticPool
 
-from app.db.schema import (
+from dj_panel.app.db.schema import (
     dataset_facets,
     dataset_versions,
     datasets,
@@ -19,11 +19,15 @@ from app.db.schema import (
     namespaces,
     run_facets,
     runs,
+    tasks,
+    task_attempts,
+    execution_links,
 )
-from app.models.constant import DatasetLifecycleState, JobVersionIOType
-from app.models.protocols.openlineage import RunEventType
-from app.utils.openlineage_utils import parse_event
-from app.services.lineage import LineageService
+from dj_panel.app.models.constant import DatasetLifecycleState, JobVersionIOType
+from dj_panel.app.models.protocols.openlineage import RunEventType
+from dj_panel.app.utils.openlineage_utils import parse_event
+from dj_panel.app.services.lineage import LineageService
+from dj_panel.app.utils.common_utils import new_id, utc_now
 
 FIXTURES = Path(__file__).parent / 'fixtures'
 
@@ -263,3 +267,63 @@ def test_job_and_dataset_events_are_accepted_and_distinguished(ingestion_service
     registered_model = next(row for row in dataset_rows if row["name"] == "registered_model")
     assert feature_store_snapshot["current_version_id"] is not None
     assert registered_model["current_version_id"] is not None
+
+
+def test_pipeline_run_event_links_task_by_datajuicer_job_id(ingestion_service, engine) -> None:
+    now = utc_now()
+    task_id = new_id()
+    attempt_id = new_id()
+    submission_id = new_id()
+    workspace_id = new_id()
+
+    with engine.begin() as conn:
+        conn.execute(
+            tasks.insert().values(
+                id=task_id,
+                workspace_id=workspace_id,
+                run_submission_id=submission_id,
+                recipe_version_id=None,
+                task_kind="dj_recipe",
+                status="CLAIMED",
+                attempt_count=1,
+                current_attempt_id=attempt_id,
+                command="dj-process --config recipe.yaml",
+                script_path="/tmp/recipe.yaml",
+                env_vars={},
+                execution_spec={},
+                timeout_seconds=3600,
+                created_at=now,
+            )
+        )
+        conn.execute(
+            task_attempts.insert().values(
+                id=attempt_id,
+                task_id=task_id,
+                worker_id="worker-1",
+                attempt_number=1,
+                status="CLAIMED",
+                lease_token="lease-token",
+                created_at=now,
+                updated_at=now,
+                last_heartbeat_at=now,
+            )
+        )
+
+    payload = load_event("run_complete.json")
+    payload["run"]["runId"] = "ol-run-task-link-1"
+    payload["run"]["facets"]["datajuicer"] = {"jobId": task_id}
+    ingestion_service.ingest(parse_event(payload), payload)
+
+    with engine.begin() as conn:
+        attempt_row = conn.execute(
+            select(task_attempts).where(task_attempts.c.id == attempt_id)
+        ).mappings().one()
+        link_row = conn.execute(select(execution_links)).mappings().one()
+        run_row = conn.execute(select(runs)).mappings().one()
+
+    assert attempt_row["openlineage_run_id"] == "ol-run-task-link-1"
+    assert link_row["task_id"] == task_id
+    assert link_row["task_attempt_id"] == attempt_id
+    assert link_row["run_submission_id"] == submission_id
+    assert link_row["openlineage_run_id"] == "ol-run-task-link-1"
+    assert run_row["run_id"] == "ol-run-task-link-1"

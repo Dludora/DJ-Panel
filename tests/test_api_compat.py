@@ -9,13 +9,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
-from app.api.dependencies import get_asset_service, get_lineage_service
-from app.db.engine import get_engine
-from app.db.schema import metadata
-from app.main import app
-from app.models.api import IngestionStatus
-from app.services.assets import AssetService
-from app.services.lineage import LineageService
+from dj_panel.app.api.dependencies import get_asset_service, get_lineage_service
+from dj_panel.app.db.engine import get_engine
+from dj_panel.app.db.schema import metadata
+from dj_panel.app.main import app
+from dj_panel.app.models.api import IngestionStatus
+from dj_panel.app.services.assets import AssetService
+from dj_panel.app.services.lineage import LineageService
 
 FIXTURES = Path(__file__).parent / 'fixtures'
 

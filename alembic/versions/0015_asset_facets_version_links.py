@@ -18,6 +18,7 @@ depends_on = None
 
 
 def upgrade() -> None:
+    dialect_name = op.get_bind().dialect.name
     with op.batch_alter_table("asset_facets") as batch_op:
         batch_op.add_column(
             sa.Column("asset_version_id", sa.String(length=36), nullable=True)
@@ -37,7 +38,8 @@ def upgrade() -> None:
             ["id"],
             ondelete="CASCADE",
         )
-        batch_op.drop_constraint("uq_asset_facets_asset_name", type_="unique")
+        if dialect_name != "sqlite":
+            batch_op.drop_constraint("uq_asset_facets_asset_name", type_="unique")
 
     op.create_index("ix_asset_facets_asset", "asset_facets", ["asset_id"], unique=False)
     op.create_index(

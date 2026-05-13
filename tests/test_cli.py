@@ -4,12 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from cli import (
+from dj_panel.cli import (
     DEFAULT_DJ_EXECUTION_SPEC,
     DEFAULT_DJ_COMMAND,
     _build_recipe_create_request,
     _load_env_overrides,
     _load_json_arg,
+    _load_processing_run_spec,
     _load_recipe_body,
     _load_structured_arg,
     _normalize_base_url,
@@ -77,6 +78,66 @@ def test_load_structured_arg_accepts_yaml_file(tmp_path: Path) -> None:
     }
 
 
+def test_load_processing_run_spec_expands_local_recipe_file(tmp_path: Path) -> None:
+    recipe_path = tmp_path / 'process.yaml'
+    recipe_path.write_text(
+        'project_name: loop-demo\n'
+        'dataset_path: /data/raw.jsonl\n'
+        'export_path: /data/clean.jsonl\n',
+        encoding='utf-8',
+    )
+    spec_path = tmp_path / 'submit.yaml'
+    spec_path.write_text(
+        'kind: processing\n'
+        'name: loop-demo-run\n'
+        'process:\n'
+        '  dj_configs:\n'
+        '    mode: local_file\n'
+        f'    path: {recipe_path}\n'
+        '  extra_configs:\n'
+        '    export_path: /data/final.jsonl\n',
+        encoding='utf-8',
+    )
+
+    spec = _load_processing_run_spec(str(spec_path))
+
+    assert spec.kind == 'processing'
+    assert spec.process.dj_configs.mode == 'local_file'
+    assert spec.process.dj_configs.path == str(recipe_path.resolve())
+    assert spec.process.dj_configs.recipe_body['project_name'] == 'loop-demo'
+    assert spec.process.extra_configs == {'export_path': '/data/final.jsonl'}
+
+
+def test_load_processing_run_spec_preserves_dataset_references(tmp_path: Path) -> None:
+    recipe_path = tmp_path / 'process.yaml'
+    recipe_path.write_text(
+        'project_name: loop-demo\n'
+        'export_path: /data/clean.jsonl\n',
+        encoding='utf-8',
+    )
+    spec_path = tmp_path / 'submit.yaml'
+    spec_path.write_text(
+        'kind: processing\n'
+        'name: loop-demo-run\n'
+        'process:\n'
+        '  dj_configs:\n'
+        '    mode: local_file\n'
+        f'    path: {recipe_path}\n'
+        '  datasets:\n'
+        '    inputs:\n'
+        '      - namespace: llm-team.datasets\n'
+        '        name: raw_sft\n',
+        encoding='utf-8',
+    )
+
+    spec = _load_processing_run_spec(str(spec_path))
+
+    assert spec.process.datasets is not None
+    assert len(spec.process.datasets.inputs) == 1
+    assert spec.process.datasets.inputs[0].namespace == 'llm-team.datasets'
+    assert spec.process.datasets.inputs[0].name == 'raw_sft'
+
+
 def test_load_env_overrides_merges_file_and_inline_values(tmp_path: Path) -> None:
     env_path = tmp_path / 'train.env'
     env_path.write_text(
@@ -132,7 +193,7 @@ def test_emit_config_show_uses_human_readable_output(capsys: pytest.CaptureFixtu
 
 
 def test_run_submit_help_is_available(capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
-    from cli import main
+    from dj_panel.cli import main
 
     monkeypatch.setattr('sys.argv', ['dj-panel', 'run', 'submit', '--help'])
     with pytest.raises(SystemExit) as exc:
@@ -141,18 +202,51 @@ def test_run_submit_help_is_available(capsys: pytest.CaptureFixture[str], monkey
     assert exc.value.code == 0
     output = capsys.readouterr().out
     assert '--kind' in output
-    assert '--recipe' in output
-    assert '--recipe-version-id' in output
-    assert '--parameters' in output
     assert '--spec' in output
+    assert '--parameters' in output
     assert '--env' in output
     assert '--env-file' in output
+
+
+def test_run_lifecycle_help_is_available(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from dj_panel.cli import main
+
+    monkeypatch.setattr('sys.argv', ['dj-panel', 'run', '--help'])
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert exc.value.code == 0
+    output = capsys.readouterr().out
+    assert 'submit' in output
+    assert 'list' in output
+    assert 'show' in output
+    assert 'resume' in output
+    assert 'cancel' in output
+    assert 'logs' in output
+
+
+def test_run_cancel_help_is_available(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from dj_panel.cli import main
+
+    monkeypatch.setattr('sys.argv', ['dj-panel', 'run', 'cancel', '--help'])
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert exc.value.code == 0
+    output = capsys.readouterr().out
+    assert 'usage: dj-panel run cancel' in output
+    assert 'submission_id' in output
+    assert '--base-url' in output
 
 
 def test_recipe_list_and_show_help_are_available(
     capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from cli import main
+    from dj_panel.cli import main
 
     monkeypatch.setattr('sys.argv', ['dj-panel', 'recipe', 'list', '--help'])
     with pytest.raises(SystemExit) as list_exc:
@@ -172,7 +266,7 @@ def test_recipe_list_and_show_help_are_available(
 def test_workspace_cli_help_exposes_member_commands(
     capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from cli import main
+    from dj_panel.cli import main
 
     monkeypatch.setattr('sys.argv', ['dj-panel', 'workspace', 'members', '--help'])
     with pytest.raises(SystemExit) as exc:
@@ -185,7 +279,7 @@ def test_workspace_cli_help_exposes_member_commands(
 
 
 def test_config_cli_help_is_available(capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
-    from cli import main
+    from dj_panel.cli import main
 
     monkeypatch.setattr('sys.argv', ['dj-panel', 'config', 'set', '--help'])
     with pytest.raises(SystemExit) as exc:
@@ -199,7 +293,7 @@ def test_config_cli_help_is_available(capsys: pytest.CaptureFixture[str], monkey
 
 
 def test_web_cli_help_is_available(capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
-    from cli import main
+    from dj_panel.cli import main
 
     monkeypatch.setattr('sys.argv', ['dj-panel', 'web', '--help'])
     with pytest.raises(SystemExit) as exc:
@@ -216,7 +310,7 @@ def test_web_cli_help_is_available(capsys: pytest.CaptureFixture[str], monkeypat
 def test_worker_train_and_eval_help_are_available(
     capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from cli import main
+    from dj_panel.cli import main
 
     monkeypatch.setattr('sys.argv', ['dj-panel', 'worker', 'train', '--help'])
     with pytest.raises(SystemExit) as train_exc:

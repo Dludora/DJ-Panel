@@ -10,7 +10,7 @@ The goal is:
 - operators can see which environment variables affect behavior
 
 This document covers runtime and operator defaults only. Business-level protocol
-defaults such as `submissionKind=processing_pipeline` or `role=MEMBER` still
+defaults such as `submissionKind=processing` or `role=MEMBER` still
 live with the API/domain models and are not treated as environment-configurable
 deployment settings.
 

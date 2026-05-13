@@ -128,13 +128,14 @@ dj-panel recipe show \
   --recipe sft-cleaning
 ```
 
-Submit a run submission from the current recipe version:
+Submit a processing run submission from a spec:
 
 ```bash
 dj-panel run submit \
-  --recipe sft-cleaning \
-  --requested-by alice \
-  --parameters '{"np": 4}'
+  --workspace llm-team \
+  --kind processing \
+  --spec ./process_spec.yaml \
+  --requested-by alice
 ```
 
 Most commands now use a human-readable table or key/value format by default. Add `--json`
@@ -152,8 +153,9 @@ when you want the raw API payload.
 ## Worker client
 
 The V1 worker is Data-Juicer-specific. It registers itself as a DJ worker, claims only
-`dj_recipe` tasks, materializes the claimed recipe into a local `recipe.yaml`, and runs
-Data-Juicer with `dj-process --config`.
+`dj_recipe` tasks, materializes the claimed recipe into `<workdir>/tasks/<task_id>/recipe.yaml`,
+passes `--job_id <task_id>`, aligns DJ's final `work_dir` to that same task directory,
+and captures execution output in `<workdir>/tasks/<task_id>/run.log`.
 
 ```bash
 dj-panel worker dj \

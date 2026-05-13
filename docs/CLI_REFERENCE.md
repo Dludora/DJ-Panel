@@ -57,7 +57,12 @@ dj-panel
 │   ├── show
 │   └── publish
 ├── run
-│   └── submit
+│   ├── submit
+│   ├── list
+│   ├── show
+│   ├── resume
+│   ├── cancel
+│   └── logs
 └── worker
     ├── dj
     ├── train
@@ -328,32 +333,35 @@ dj-panel recipe publish ./config_lineage_v2.yaml --workspace llm-team --recipe l
 
 常见参数：
 - `--workspace`
-- `--kind`：支持 `processing_pipeline`、`training`、`evaluation`
-- `--recipe`：用 recipe 当前版本提交
-- `--recipe-version-id`：直接指定版本
+- `--kind`：支持 `processing`、`training`、`evaluation`
 - `--requested-by`
-- `--parameters`：JSON 字符串或 JSON 文件路径，会在 worker 物化 recipe 时合并到 `recipeBody`
-- `--spec`：YAML/JSON 对象或文件路径，用于 command-based `training` / `evaluation`
+- `--parameters`：JSON 字符串或 JSON 文件路径；当前只保留给 command-based `training` / `evaluation`
+- `--spec`：YAML/JSON 对象或文件路径；`processing`、`training`、`evaluation` 都通过它描述提交内容
 - `--name`
 - `--json`
 
 注意：
-- 当 `--kind processing_pipeline` 时：
-  需要 `--recipe` 或 `--recipe-version-id`
+- 当 `--kind processing` 时：
+  需要 `--spec`
 - 当 `--kind training` 或 `--kind evaluation` 时：
   需要 `--spec`
-- 如果 processing 只提供 `--recipe`，CLI 会先查出该 recipe 的当前版本，再创建 submission
+- processing 的第一版 spec 使用 DJ Panel 自己的高层格式，重点字段在：
+  - `kind`
+  - `name`
+  - `requestedBy`
+  - `process.dj_configs`
+  - `process.extra_configs`
+  - `process.env`
+  - `process.timeoutSeconds`
 
 示例：
 
 ```bash
-dj-panel run submit --workspace llm-team --recipe lineage_base --requested-by alice
-```
-
-带参数覆盖的示例：
-
-```bash
-dj-panel run submit --workspace llm-team --recipe lineage_base --parameters '{"dataset_path": "/data/raw/train.jsonl"}'
+dj-panel run submit \
+  --workspace llm-team \
+  --kind processing \
+  --spec ./process_spec.yaml \
+  --requested-by alice
 ```
 
 training 示例：
@@ -392,6 +400,85 @@ outputs:
   - uri: /data/models/qwen2-sft-v1
 ```
 
+`process_spec.yaml` 最小示例：
+
+```yaml
+kind: processing
+name: demo-process-run
+requestedBy: alice
+process:
+  dj_configs:
+    mode: workspace_recipe
+    name: lineage_base
+  extra_configs:
+    dataset_path: /data/raw/train.jsonl
+    export_path: /data/processed/train.jsonl
+  env:
+    OPENLINEAGE_URL: http://127.0.0.1:8000/api/v1/lineage
+  timeoutSeconds: 7200
+```
+
+processing 当前还支持：
+- `process.dj_configs.mode = workspace_recipe`
+- `process.dj_configs.mode = local_file`
+
+其中 `local_file` 模式下：
+- CLI 会先本地解析 YAML
+- 然后把 `recipeBody` 嵌入提交 payload
+- worker 最终会把 `recipeBody`、submission `parameters` 和平台注入的 `work_dir` 合并成 panel 侧 `recipe.yaml`
+
+#### `dj-panel run list`
+
+作用：
+- 查看某个 workspace 下的 run submissions
+
+#### `dj-panel run show`
+
+作用：
+- 查看单个 run submission 的详情
+
+#### `dj-panel run resume`
+
+作用：
+- 恢复一个 `FAILED` 或 `CANCELLED` 的 run submission
+- 保留原有 `task_id`
+- 让 worker 后续基于同一个 DJ `job_id/work_dir` 创建新的 attempt
+
+当前限制：
+- 只支持 `FAILED` / `CANCELLED`
+- 不会创建新的 task，而是把原 task 重置回 `PENDING`
+
+示例：
+
+```bash
+dj-panel run resume c42b30c2-8a86-43c4-a97d-bff1849ce1e7
+```
+
+#### `dj-panel run cancel`
+
+作用：
+- 取消一个 `PENDING` 的 run submission
+- 会把对应 `run_submission` 和派生的 `task` 一起改成 `CANCELLED`
+
+当前限制：
+- 只支持 `PENDING`
+- 不处理中断已认领或运行中的 worker 进程
+
+示例：
+
+```bash
+dj-panel run cancel bf3ea467-5805-46cd-a4b1-07df88242b97
+```
+
+#### `dj-panel run logs`
+
+作用：
+- 预留命令
+
+当前状态：
+- 尚未实现
+```
+
 ### 6. Worker 执行层
 
 #### `dj-panel worker dj`
@@ -423,12 +510,29 @@ outputs:
 5. 执行类似命令：
 
 ```bash
-dj-process --config /.../tasks/<task_id>/recipe.yaml
+dj-process --config /.../tasks/<task_id>/recipe.yaml --job_id <task_id>
 ```
 
-6. 把执行输出写入本地日志文件，并把日志文件注册为 `LOG` artifact
-7. 把物化后的 recipe 作为 `CONFIG` artifact 上报
-8. 根据执行结果调用 `start` / `complete` / `fail`
+6. 使用同一个 `<workdir>/tasks/<task_id>` 作为 DJ 的最终 `work_dir`
+7. 把执行输出写入 `<workdir>/tasks/<task_id>/run.log`，并把它注册为 `LOG` artifact
+8. 把 panel 物化后的 `recipe.yaml` 作为 `CONFIG` artifact 上报
+9. 根据执行结果调用 `start` / `complete` / `fail`
+
+目录语义固定为：
+- `task_id == DJ job_id`
+- `task_dir = <workdir>/tasks/<task_id>`
+- worker 在 `cwd=task_dir` 下执行 DJ CLI
+- DJ 的最终 `work_dir` 与这个 `task_dir` 对齐
+- panel 侧文件是：
+  - `recipe.yaml`
+  - `run.log`
+- DJ 侧运行态文件通常包括：
+  - `cli.yaml`
+  - `events_*.jsonl`
+  - `logs/`
+  - `ckpt/checkpoints`
+  - `processed.jsonl`
+  - `metadata/`
 
 单次执行模式：
 - `--poll-interval <= 0` 时只尝试认领一次
@@ -589,7 +693,7 @@ dj-panel recipe import ./config_lineage.yaml --name lineage_base --owner alice
 5. 提交一次运行
 
 ```bash
-dj-panel run submit --recipe lineage_base --requested-by alice
+dj-panel run submit --kind processing --spec ./process_spec.yaml --requested-by alice
 ```
 
 6. 启动 worker 执行任务
@@ -678,7 +782,12 @@ dj-panel
 │   ├── show
 │   └── publish
 ├── run
-│   └── submit
+│   ├── submit
+│   ├── list
+│   ├── show
+│   ├── resume
+│   ├── cancel
+│   └── logs
 └── worker
     ├── dj
     ├── train
@@ -948,32 +1057,35 @@ Purpose:
 
 Common arguments:
 - `--workspace`
-- `--kind`: supports `processing_pipeline`, `training`, and `evaluation`
-- `--recipe`: submit using the recipe's current version
-- `--recipe-version-id`: submit using a specific version directly
+- `--kind`: supports `processing`, `training`, and `evaluation`
 - `--requested-by`
-- `--parameters`: a JSON string or path to a JSON file; merged into `recipeBody` when the worker materializes the recipe
-- `--spec`: YAML/JSON object or file path for command-based `training` / `evaluation`
+- `--parameters`: a JSON string or path to a JSON file; currently retained for command-based `training` / `evaluation`
+- `--spec`: YAML/JSON object or file path describing the processing/training/evaluation submission
 - `--name`
 - `--json`
 
 Notes:
-- When `--kind processing_pipeline` is used:
-  one of `--recipe` or `--recipe-version-id` must be provided
+- When `--kind processing` is used:
+  `--spec` is required
 - When `--kind training` or `--kind evaluation` is used:
   `--spec` is required
-- If processing only provides `--recipe`, the CLI resolves the recipe's current version before creating the submission
+- The first processing spec version uses DJ Panel's higher-level structure with:
+  - `kind`
+  - `name`
+  - `requestedBy`
+  - `process.dj_configs`
+  - `process.extra_configs`
+  - `process.env`
+  - `process.timeoutSeconds`
 
 Example:
 
 ```bash
-dj-panel run submit --workspace llm-team --recipe lineage_base --requested-by alice
-```
-
-Example with parameter overrides:
-
-```bash
-dj-panel run submit --workspace llm-team --recipe lineage_base --parameters '{"dataset_path": "/data/raw/train.jsonl"}'
+dj-panel run submit \
+  --workspace llm-team \
+  --kind processing \
+  --spec ./process_spec.yaml \
+  --requested-by alice
 ```
 
 Training example:
@@ -1012,6 +1124,85 @@ outputs:
   - uri: /data/models/qwen2-sft-v1
 ```
 
+Minimal `process_spec.yaml` example:
+
+```yaml
+kind: processing
+name: demo-process-run
+requestedBy: alice
+process:
+  dj_configs:
+    mode: workspace_recipe
+    name: lineage_base
+  extra_configs:
+    dataset_path: /data/raw/train.jsonl
+    export_path: /data/processed/train.jsonl
+  env:
+    OPENLINEAGE_URL: http://127.0.0.1:8000/api/v1/lineage
+  timeoutSeconds: 7200
+```
+
+Processing currently also supports:
+- `process.dj_configs.mode = workspace_recipe`
+- `process.dj_configs.mode = local_file`
+
+In `local_file` mode:
+- the CLI parses the YAML locally
+- embeds `recipeBody` in the submission payload
+- the worker materializes panel-side `recipe.yaml` by merging `recipeBody`, submission `parameters`, and the platform-injected `work_dir`
+
+#### `dj-panel run list`
+
+Purpose:
+- List run submissions in a workspace
+
+#### `dj-panel run show`
+
+Purpose:
+- Show one run submission in detail
+
+#### `dj-panel run resume`
+
+Purpose:
+- Resume a `FAILED` or `CANCELLED` run submission
+- Keep the original `task_id`
+- Let the next worker attempt reuse the same DJ `job_id/work_dir`
+
+Current limits:
+- Only `FAILED` / `CANCELLED` are supported
+- No new task is created; the original task is reset to `PENDING`
+
+Example:
+
+```bash
+dj-panel run resume c42b30c2-8a86-43c4-a97d-bff1849ce1e7
+```
+
+#### `dj-panel run cancel`
+
+Purpose:
+- Cancel a `PENDING` run submission
+- Mark both the submission and its derived task as `CANCELLED`
+
+Current limits:
+- Only `PENDING` is supported
+- Running workers are not interrupted by this command
+
+Example:
+
+```bash
+dj-panel run cancel bf3ea467-5805-46cd-a4b1-07df88242b97
+```
+
+#### `dj-panel run logs`
+
+Purpose:
+- Reserved command
+
+Current status:
+- Not implemented yet
+```
+
 ### 6. Worker Execution Layer
 
 #### `dj-panel worker dj`
@@ -1043,12 +1234,13 @@ Key behavior:
 5. Execute a command like:
 
 ```bash
-dj-process --config /.../tasks/<task_id>/recipe.yaml
+dj-process --config /.../tasks/<task_id>/recipe.yaml --job_id <task_id>
 ```
 
-6. Write execution output to a local log file and register it as a `LOG` artifact
-7. Report the materialized recipe as a `CONFIG` artifact
-8. Transition the task through `start`, `complete`, or `fail`
+6. Use that same task directory as DJ's final `work_dir`
+7. Write execution output to `<workdir>/tasks/<task_id>/run.log` and register it as a `LOG` artifact
+8. Report the materialized recipe as a `CONFIG` artifact
+9. Transition the task through `start`, `complete`, or `fail`
 
 Single-shot mode:
 - If `--poll-interval <= 0`, the worker claims at most once
@@ -1209,7 +1401,7 @@ dj-panel recipe import ./config_lineage.yaml --name lineage_base --owner alice
 5. Submit a run
 
 ```bash
-dj-panel run submit --recipe lineage_base --requested-by alice
+dj-panel run submit --kind processing --spec ./process_spec.yaml --requested-by alice
 ```
 
 6. Start a worker
@@ -1249,13 +1441,13 @@ The CLI already covers:
 - web dev server startup
 - workspace management
 - recipe import and version publishing
-- run submission creation
+- run submission creation, listing, show, resume, and pending-only cancel
 - Data-Juicer worker execution
 - command-based training worker execution
 - command-based evaluation worker execution
 
 The CLI does not yet fully cover:
-- richer run submission inspection and management commands
+- `run logs`
 - manual task operations
 - lineage query commands
 - training/evaluation template management
