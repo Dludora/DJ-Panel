@@ -299,15 +299,11 @@ Use these documents according to purpose:
 
 - [README.md](../README.md)
   Quick start and common CLI usage.
-- [TARGET_ARCHITECTURE.md](./TARGET_ARCHITECTURE.md)
-  Long-term architecture.
-- [DJ_PROCESSING_V1_DESIGN.md](./DJ_PROCESSING_V1_DESIGN.md)
-  V1 product design.
-- [V1_API_OPENAPI_STYLE.md](./V1_API_OPENAPI_STYLE.md)
-  API contract target.
-- [DATABASE_SCHEMA_DRAFT.md](./DATABASE_SCHEMA_DRAFT.md)
-  Schema ownership and table boundaries.
-- [DJ_WORKER_PAYLOAD_AND_SEQUENCE.md](./DJ_WORKER_PAYLOAD_AND_SEQUENCE.md)
+- [RUN_SUBMISSION_SPEC.md](./run/RUN_SUBMISSION_SPEC.md)
+  Current processing submission shape.
+- [openapi.yaml](./api/openapi.yaml)
+  Current HTTP API contract generated from the FastAPI app.
+- [DJ_WORKER_PAYLOAD_AND_SEQUENCE.md](./worker/data-juicer/DJ_WORKER_PAYLOAD_AND_SEQUENCE.md)
   Worker claim payload and execution sequence.
 
 ## 9. Known Gaps

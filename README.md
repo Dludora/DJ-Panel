@@ -30,11 +30,10 @@ The main documentation entrypoints are:
 
 The deeper design documents live under `docs/`:
 
-- [docs/TARGET_ARCHITECTURE.md](./docs/TARGET_ARCHITECTURE.md)
-- [docs/DJ_PROCESSING_V1_DESIGN.md](./docs/DJ_PROCESSING_V1_DESIGN.md)
-- [docs/DATABASE_SCHEMA_DRAFT.md](./docs/DATABASE_SCHEMA_DRAFT.md)
-- [docs/V1_API_OPENAPI_STYLE.md](./docs/V1_API_OPENAPI_STYLE.md)
-- [docs/DJ_WORKER_PAYLOAD_AND_SEQUENCE.md](./docs/DJ_WORKER_PAYLOAD_AND_SEQUENCE.md)
+- [docs/api/openapi.yaml](./docs/api/openapi.yaml)
+- [docs/run/RUN_SUBMISSION_SPEC.md](./docs/run/RUN_SUBMISSION_SPEC.md)
+- [docs/worker/data-juicer/DJ_WORKER_PAYLOAD_AND_SEQUENCE.md](./docs/worker/data-juicer/DJ_WORKER_PAYLOAD_AND_SEQUENCE.md)
+- [docs/worker/train_eval/SFT_MLFLOW_LINEAGE_DESIGN.md](./docs/worker/train_eval/SFT_MLFLOW_LINEAGE_DESIGN.md)
 - [docs/ENVIRONMENT_VARIABLES.md](./docs/ENVIRONMENT_VARIABLES.md)
   Runtime environment defaults and operator configuration entrypoints.
 

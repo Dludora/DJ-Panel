@@ -1,0 +1,1955 @@
+openapi: 3.1.0
+info:
+  title: DJ Panel Backend
+  version: 0.1.0
+paths:
+  /api/v1/lineage:
+    post:
+      tags:
+      - lineage
+      summary: Create Lineage Event
+      operationId: create_lineage_event_api_v1_lineage_post
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionResponse'
+    get:
+      tags:
+      - lineage
+      summary: Get Lineage
+      operationId: get_lineage_api_v1_lineage_get
+      parameters:
+      - name: nodeId
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Nodeid
+      - name: depth
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 20
+          minimum: 0
+          default: 1
+          title: Depth
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/events/lineage:
+    get:
+      tags:
+      - lineage
+      summary: List Lineage Events
+      operationId: list_lineage_events_api_v1_events_lineage_get
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 50
+          title: Limit
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Lineage Events Api V1 Events Lineage Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/namespaces:
+    get:
+      tags:
+      - lineage
+      summary: List Namespaces
+      operationId: list_namespaces_api_v1_namespaces_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response List Namespaces Api V1 Namespaces Get
+  /api/v1/jobs:
+    get:
+      tags:
+      - lineage
+      summary: List Jobs
+      operationId: list_jobs_api_v1_jobs_get
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 25
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Offset
+      - name: lastRunStates
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Lastrunstates
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/namespaces/{namespace}/jobs:
+    get:
+      tags:
+      - lineage
+      summary: List Jobs By Namespace
+      operationId: list_jobs_by_namespace_api_v1_namespaces__namespace__jobs_get
+      parameters:
+      - name: namespace
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Namespace
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 25
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Offset
+      - name: lastRunStates
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Lastrunstates
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/namespaces/{namespace}/jobs/{job_name}/runs:
+    get:
+      tags:
+      - lineage
+      summary: Get Runs
+      operationId: get_runs_api_v1_namespaces__namespace__jobs__job_name__runs_get
+      parameters:
+      - name: namespace
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Namespace
+      - name: job_name
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Job Name
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 10
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/namespaces/{namespace}/jobs/{job_name}:
+    get:
+      tags:
+      - lineage
+      summary: Get Job
+      operationId: get_job_api_v1_namespaces__namespace__jobs__job_name__get
+      parameters:
+      - name: namespace
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Namespace
+      - name: job_name
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Job Name
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/jobs/runs/{run_id}/facets:
+    get:
+      tags:
+      - lineage
+      summary: Get Run Or Job Facets
+      operationId: get_run_or_job_facets_api_v1_jobs_runs__run_id__facets_get
+      parameters:
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Run Id
+      - name: type
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: ^(run|job)$
+          default: run
+          title: Type
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/tags:
+    get:
+      tags:
+      - assets
+      summary: List Tags
+      operationId: list_tags_api_v1_tags_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response List Tags Api V1 Tags Get
+  /api/v1/tags/{tag_name}:
+    put:
+      tags:
+      - assets
+      summary: Upsert Tag
+      operationId: upsert_tag_api_v1_tags__tag_name__put
+      parameters:
+      - name: tag_name
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Tag Name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertTagRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Upsert Tag Api V1 Tags  Tag Name  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/assets:
+    get:
+      tags:
+      - assets
+      summary: List Assets
+      operationId: list_assets_api_v1_assets_get
+      parameters:
+      - name: namespace
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Namespace
+      - name: assetKind
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/AssetKind'
+          - type: 'null'
+          title: Assetkind
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - assets
+      summary: Register Asset
+      operationId: register_asset_api_v1_assets_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetCreateRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/assets/{asset_id}:
+    get:
+      tags:
+      - assets
+      summary: Get Asset By Id
+      operationId: get_asset_by_id_api_v1_assets__asset_id__get
+      parameters:
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Asset Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+      - assets
+      summary: Rename Asset
+      operationId: rename_asset_api_v1_assets__asset_id__patch
+      parameters:
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Asset Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetRenameRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/assets/{asset_id}/versions:
+    post:
+      tags:
+      - assets
+      summary: Register Asset Version
+      operationId: register_asset_version_api_v1_assets__asset_id__versions_post
+      parameters:
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Asset Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetVersionCreateRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/namespaces/{namespace}/datasets:
+    get:
+      tags:
+      - assets
+      summary: List Datasets
+      operationId: list_datasets_api_v1_namespaces__namespace__datasets_get
+      parameters:
+      - name: namespace
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Namespace
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/namespaces/{namespace}/assets/{asset_name}/versions:
+    get:
+      tags:
+      - assets
+      summary: Get Asset Versions
+      operationId: get_asset_versions_api_v1_namespaces__namespace__assets__asset_name__versions_get
+      parameters:
+      - name: namespace
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Namespace
+      - name: asset_name
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Asset Name
+      - name: assetKind
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/AssetKind'
+          - type: 'null'
+          title: Assetkind
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 10
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/namespaces/{namespace}/assets/{asset_name}:
+    get:
+      tags:
+      - assets
+      summary: Get Asset
+      operationId: get_asset_api_v1_namespaces__namespace__assets__asset_name__get
+      parameters:
+      - name: namespace
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Namespace
+      - name: asset_name
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Asset Name
+      - name: assetKind
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/AssetKind'
+          - type: 'null'
+          title: Assetkind
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/namespaces/{namespace}/datasets/{dataset_name}/versions:
+    get:
+      tags:
+      - assets
+      summary: Get Dataset Versions
+      operationId: get_dataset_versions_api_v1_namespaces__namespace__datasets__dataset_name__versions_get
+      parameters:
+      - name: namespace
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Namespace
+      - name: dataset_name
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Dataset Name
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 10
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/namespaces/{namespace}/datasets/{dataset_name}:
+    get:
+      tags:
+      - assets
+      summary: Get Dataset
+      operationId: get_dataset_api_v1_namespaces__namespace__datasets__dataset_name__get
+      parameters:
+      - name: namespace
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Namespace
+      - name: dataset_name
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Dataset Name
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workspaces:
+    get:
+      tags:
+      - workspaces
+      summary: List Workspaces
+      operationId: list_workspaces_api_v1_workspaces_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response List Workspaces Api V1 Workspaces Get
+    post:
+      tags:
+      - workspaces
+      summary: Create Workspace
+      operationId: create_workspace_api_v1_workspaces_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkspaceCreateRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Create Workspace Api V1 Workspaces Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workspaces/{workspace_slug}/members:
+    post:
+      tags:
+      - workspaces
+      summary: Add Workspace Member
+      operationId: add_workspace_member_api_v1_workspaces__workspace_slug__members_post
+      parameters:
+      - name: workspace_slug
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Workspace Slug
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkspaceMemberAddRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Add Workspace Member Api V1 Workspaces  Workspace
+                  Slug  Members Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - workspaces
+      summary: List Workspace Members
+      operationId: list_workspace_members_api_v1_workspaces__workspace_slug__members_get
+      parameters:
+      - name: workspace_slug
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Workspace Slug
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Workspace Members Api V1 Workspaces  Workspace
+                  Slug  Members Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workspaces/{workspace_slug}/recipes:
+    post:
+      tags:
+      - recipes
+      summary: Create Recipe
+      operationId: create_recipe_api_v1_workspaces__workspace_slug__recipes_post
+      parameters:
+      - name: workspace_slug
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Workspace Slug
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecipeCreateRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Create Recipe Api V1 Workspaces  Workspace Slug  Recipes
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - recipes
+      summary: List Recipes
+      operationId: list_recipes_api_v1_workspaces__workspace_slug__recipes_get
+      parameters:
+      - name: workspace_slug
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Workspace Slug
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Recipes Api V1 Workspaces  Workspace Slug  Recipes
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/recipes/{recipe_id}:
+    get:
+      tags:
+      - recipes
+      summary: Get Recipe
+      operationId: get_recipe_api_v1_recipes__recipe_id__get
+      parameters:
+      - name: recipe_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Recipe Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Recipe Api V1 Recipes  Recipe Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/recipes/{recipe_id}/versions:
+    post:
+      tags:
+      - recipes
+      summary: Create Recipe Version
+      operationId: create_recipe_version_api_v1_recipes__recipe_id__versions_post
+      parameters:
+      - name: recipe_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Recipe Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecipeVersionCreateRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Create Recipe Version Api V1 Recipes  Recipe Id  Versions
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - recipes
+      summary: List Recipe Versions
+      operationId: list_recipe_versions_api_v1_recipes__recipe_id__versions_get
+      parameters:
+      - name: recipe_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Recipe Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Recipe Versions Api V1 Recipes  Recipe Id  Versions
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workspaces/{workspace_slug}/run-submissions:
+    post:
+      tags:
+      - run-submissions
+      summary: Create Run Submission
+      operationId: create_run_submission_api_v1_workspaces__workspace_slug__run_submissions_post
+      parameters:
+      - name: workspace_slug
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Workspace Slug
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunSubmissionCreateRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Create Run Submission Api V1 Workspaces  Workspace
+                  Slug  Run Submissions Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - run-submissions
+      summary: List Run Submissions
+      operationId: list_run_submissions_api_v1_workspaces__workspace_slug__run_submissions_get
+      parameters:
+      - name: workspace_slug
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Workspace Slug
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Run Submissions Api V1 Workspaces  Workspace
+                  Slug  Run Submissions Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/run-submissions/{submission_id}:
+    get:
+      tags:
+      - run-submissions
+      summary: Get Run Submission
+      operationId: get_run_submission_api_v1_run_submissions__submission_id__get
+      parameters:
+      - name: submission_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Submission Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Run Submission Api V1 Run Submissions  Submission
+                  Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/run-submissions/{submission_id}/resume:
+    post:
+      tags:
+      - run-submissions
+      summary: Resume Run Submission
+      operationId: resume_run_submission_api_v1_run_submissions__submission_id__resume_post
+      parameters:
+      - name: submission_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Submission Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Resume Run Submission Api V1 Run Submissions  Submission
+                  Id  Resume Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/run-submissions/{submission_id}/cancel:
+    post:
+      tags:
+      - run-submissions
+      summary: Cancel Run Submission
+      operationId: cancel_run_submission_api_v1_run_submissions__submission_id__cancel_post
+      parameters:
+      - name: submission_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Submission Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Cancel Run Submission Api V1 Run Submissions  Submission
+                  Id  Cancel Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workspaces/{workspace_slug}/workers/register:
+    post:
+      tags:
+      - workers
+      summary: Register Worker
+      operationId: register_worker_api_v1_workspaces__workspace_slug__workers_register_post
+      parameters:
+      - name: workspace_slug
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Workspace Slug
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkerRegisterRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Register Worker Api V1 Workspaces  Workspace Slug  Workers
+                  Register Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workers/{worker_id}/heartbeat:
+    post:
+      tags:
+      - workers
+      summary: Worker Heartbeat
+      operationId: worker_heartbeat_api_v1_workers__worker_id__heartbeat_post
+      parameters:
+      - name: worker_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Worker Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkerHeartbeatRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Worker Heartbeat Api V1 Workers  Worker Id  Heartbeat
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workspaces/{workspace_slug}/workers:
+    get:
+      tags:
+      - workers
+      summary: List Workers
+      operationId: list_workers_api_v1_workspaces__workspace_slug__workers_get
+      parameters:
+      - name: workspace_slug
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Workspace Slug
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Workers Api V1 Workspaces  Workspace Slug  Workers
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workspaces/{workspace_slug}/tasks:
+    get:
+      tags:
+      - tasks
+      summary: List Tasks
+      operationId: list_tasks_api_v1_workspaces__workspace_slug__tasks_get
+      parameters:
+      - name: workspace_slug
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Workspace Slug
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Tasks Api V1 Workspaces  Workspace Slug  Tasks
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/tasks/{task_id}:
+    get:
+      tags:
+      - tasks
+      summary: Get Task
+      operationId: get_task_api_v1_tasks__task_id__get
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Task Api V1 Tasks  Task Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workspaces/{workspace_slug}/tasks/claim:
+    post:
+      tags:
+      - tasks
+      summary: Claim Task
+      operationId: claim_task_api_v1_workspaces__workspace_slug__tasks_claim_post
+      parameters:
+      - name: workspace_slug
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Workspace Slug
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskClaimRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Claim Task Api V1 Workspaces  Workspace Slug  Tasks
+                  Claim Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/tasks/{task_id}/start:
+    post:
+      tags:
+      - tasks
+      summary: Start Task
+      operationId: start_task_api_v1_tasks__task_id__start_post
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskTransitionRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Start Task Api V1 Tasks  Task Id  Start Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/tasks/{task_id}/complete:
+    post:
+      tags:
+      - tasks
+      summary: Complete Task
+      operationId: complete_task_api_v1_tasks__task_id__complete_post
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskTransitionRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Complete Task Api V1 Tasks  Task Id  Complete Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/tasks/{task_id}/fail:
+    post:
+      tags:
+      - tasks
+      summary: Fail Task
+      operationId: fail_task_api_v1_tasks__task_id__fail_post
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskTransitionRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Fail Task Api V1 Tasks  Task Id  Fail Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/tasks/{task_id}/cancel:
+    post:
+      tags:
+      - tasks
+      summary: Cancel Task
+      operationId: cancel_task_api_v1_tasks__task_id__cancel_post
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskTransitionRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Cancel Task Api V1 Tasks  Task Id  Cancel Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/task-attempts/{attempt_id}/artifacts:
+    post:
+      tags:
+      - tasks
+      summary: Create Task Artifact
+      operationId: create_task_artifact_api_v1_task_attempts__attempt_id__artifacts_post
+      parameters:
+      - name: attempt_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Attempt Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskArtifactCreateRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Create Task Artifact Api V1 Task Attempts  Attempt
+                  Id  Artifacts Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - tasks
+      summary: List Task Artifacts
+      operationId: list_task_artifacts_api_v1_task_attempts__attempt_id__artifacts_get
+      parameters:
+      - name: attempt_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Attempt Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Task Artifacts Api V1 Task Attempts  Attempt
+                  Id  Artifacts Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    AssetCreateRequest:
+      properties:
+        namespace:
+          type: string
+          title: Namespace
+        name:
+          type: string
+          title: Name
+        assetKind:
+          $ref: '#/components/schemas/AssetKind'
+          default: DATASET
+        description:
+          type: string
+          title: Description
+          default: ''
+        facets:
+          additionalProperties: true
+          type: object
+          title: Facets
+      type: object
+      required:
+      - namespace
+      - name
+      title: AssetCreateRequest
+    AssetKind:
+      type: string
+      enum:
+      - DATASET
+      - MODEL
+      - CHECKPOINT
+      - EVAL_REPORT
+      - METRIC_REPORT
+      - ARTIFACT
+      title: AssetKind
+    AssetRenameRequest:
+      properties:
+        name:
+          type: string
+          title: Name
+      type: object
+      required:
+      - name
+      title: AssetRenameRequest
+    AssetVersionCreateRequest:
+      properties:
+        version:
+          type: string
+          title: Version
+        storageUri:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Storageuri
+        fields:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Fields
+        facets:
+          additionalProperties: true
+          type: object
+          title: Facets
+        lifecycleState:
+          type: string
+          title: Lifecyclestate
+          default: ACTIVE
+      type: object
+      required:
+      - version
+      title: AssetVersionCreateRequest
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    IngestionResponse:
+      properties:
+        status:
+          $ref: '#/components/schemas/IngestionStatus'
+          default: accepted
+        projected:
+          type: boolean
+          title: Projected
+      type: object
+      required:
+      - projected
+      title: IngestionResponse
+    IngestionStatus:
+      type: string
+      enum:
+      - accepted
+      title: IngestionStatus
+    RecipeCreateRequest:
+      properties:
+        name:
+          type: string
+          title: Name
+        description:
+          type: string
+          title: Description
+          default: ''
+        ownerName:
+          type: string
+          title: Ownername
+        recipeBody:
+          additionalProperties: true
+          type: object
+          title: Recipebody
+        command:
+          type: string
+          title: Command
+        scriptPath:
+          type: string
+          title: Scriptpath
+        parameterSchema:
+          additionalProperties: true
+          type: object
+          title: Parameterschema
+        envTemplate:
+          additionalProperties: true
+          type: object
+          title: Envtemplate
+        executionSpec:
+          additionalProperties: true
+          type: object
+          title: Executionspec
+        timeoutSeconds:
+          type: integer
+          title: Timeoutseconds
+          default: 3600
+      type: object
+      required:
+      - name
+      - ownerName
+      - command
+      - scriptPath
+      title: RecipeCreateRequest
+    RecipeVersionCreateRequest:
+      properties:
+        createdBy:
+          type: string
+          title: Createdby
+        recipeBody:
+          additionalProperties: true
+          type: object
+          title: Recipebody
+        command:
+          type: string
+          title: Command
+        scriptPath:
+          type: string
+          title: Scriptpath
+        parameterSchema:
+          additionalProperties: true
+          type: object
+          title: Parameterschema
+        envTemplate:
+          additionalProperties: true
+          type: object
+          title: Envtemplate
+        executionSpec:
+          additionalProperties: true
+          type: object
+          title: Executionspec
+        timeoutSeconds:
+          type: integer
+          title: Timeoutseconds
+          default: 3600
+      type: object
+      required:
+      - createdBy
+      - command
+      - scriptPath
+      title: RecipeVersionCreateRequest
+    RunSubmissionCreateRequest:
+      properties:
+        recipeVersionId:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Recipeversionid
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        requestedBy:
+          type: string
+          title: Requestedby
+        submissionKind:
+          $ref: '#/components/schemas/RunSubmissionKind'
+          default: processing
+        parameters:
+          additionalProperties: true
+          type: object
+          title: Parameters
+        spec:
+          additionalProperties: true
+          type: object
+          title: Spec
+        inputs:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Inputs
+        outputs:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Outputs
+      type: object
+      required:
+      - requestedBy
+      title: RunSubmissionCreateRequest
+    RunSubmissionKind:
+      type: string
+      enum:
+      - processing
+      - processing
+      - training
+      - evaluation
+      title: RunSubmissionKind
+    TaskArtifactCreateRequest:
+      properties:
+        kind:
+          type: string
+          title: Kind
+        name:
+          type: string
+          title: Name
+        uri:
+          type: string
+          title: Uri
+        metadata:
+          additionalProperties: true
+          type: object
+          title: Metadata
+        datasetId:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Datasetid
+        datasetVersionId:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Datasetversionid
+        modelUri:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Modeluri
+      type: object
+      required:
+      - kind
+      - name
+      - uri
+      title: TaskArtifactCreateRequest
+    TaskClaimRequest:
+      properties:
+        workerId:
+          type: string
+          title: Workerid
+        supportedTaskKinds:
+          items:
+            $ref: '#/components/schemas/TaskKind'
+          type: array
+          title: Supportedtaskkinds
+      type: object
+      required:
+      - workerId
+      title: TaskClaimRequest
+    TaskKind:
+      type: string
+      enum:
+      - dj_recipe
+      - training
+      - evaluation
+      - generic_command
+      title: TaskKind
+    TaskTransitionRequest:
+      properties:
+        attemptId:
+          type: string
+          title: Attemptid
+        leaseToken:
+          type: string
+          title: Leasetoken
+        openlineageRunId:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Openlineagerunid
+        rootLineageNodeId:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Rootlineagenodeid
+        failureReason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Failurereason
+      type: object
+      required:
+      - attemptId
+      - leaseToken
+      title: TaskTransitionRequest
+    UpsertTagRequest:
+      properties:
+        description:
+          type: string
+          title: Description
+          default: ''
+      type: object
+      title: UpsertTagRequest
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    WorkerHeartbeatRequest:
+      properties:
+        status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+        labels:
+          additionalProperties: true
+          type: object
+          title: Labels
+        capabilities:
+          additionalProperties: true
+          type: object
+          title: Capabilities
+      type: object
+      title: WorkerHeartbeatRequest
+    WorkerRegisterRequest:
+      properties:
+        workerId:
+          type: string
+          title: Workerid
+        displayName:
+          type: string
+          title: Displayname
+        labels:
+          additionalProperties: true
+          type: object
+          title: Labels
+        capabilities:
+          additionalProperties: true
+          type: object
+          title: Capabilities
+        maxConcurrency:
+          type: integer
+          title: Maxconcurrency
+          default: 1
+      type: object
+      required:
+      - workerId
+      - displayName
+      title: WorkerRegisterRequest
+    WorkspaceCreateRequest:
+      properties:
+        slug:
+          type: string
+          title: Slug
+        name:
+          type: string
+          title: Name
+        description:
+          type: string
+          title: Description
+          default: ''
+        ownerName:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Ownername
+      type: object
+      required:
+      - slug
+      - name
+      title: WorkspaceCreateRequest
+    WorkspaceMemberAddRequest:
+      properties:
+        userName:
+          type: string
+          title: Username
+        role:
+          type: string
+          title: Role
+          default: MEMBER
+      type: object
+      required:
+      - userName
+      title: WorkspaceMemberAddRequest

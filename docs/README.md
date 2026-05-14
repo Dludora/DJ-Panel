@@ -5,10 +5,8 @@ This directory contains the planning and reference documents for `dj-panel-backe
 The documents are intentionally split by concern. The most common source of confusion
 was that several files were all describing "the system", but from different levels:
 
-- long-term architecture
-- V1 product shape
-- database target model
-- API contract
+- current submission shape
+- current API contract
 - worker execution contract
 - current implementation status
 
@@ -20,23 +18,17 @@ If you are new to the project, read in this order:
 
 1. [CURRENT_PROJECT.md](./CURRENT_PROJECT.md)
    Start here for what the backend currently is, what it already implements, and how to run it.
-2. [TARGET_ARCHITECTURE.md](./TARGET_ARCHITECTURE.md)
-   Read this next for the long-term architectural direction.
-3. [DJ_PROCESSING_V1_DESIGN.md](./DJ_PROCESSING_V1_DESIGN.md)
-   Read this for the scoped V1 Data-Juicer product design.
-4. [CLI_REFERENCE.md](./CLI_REFERENCE.md)
+2. [CLI_REFERENCE.md](./CLI_REFERENCE.md)
    Use this when working on `dj-panel` commands, CLI defaults, or operator workflows.
-5. [RUN_SUBMISSION_SPEC.md](./RUN_SUBMISSION_SPEC.md)
+3. [RUN_SUBMISSION_SPEC.md](./run/RUN_SUBMISSION_SPEC.md)
    Use this when working on `run submit`, especially the processing spec-first path.
-6. [SFT_MLFLOW_LINEAGE_DESIGN.md](./SFT_MLFLOW_LINEAGE_DESIGN.md)
+4. [openapi.yaml](./api/openapi.yaml)
+   Use this when working on frontend-backend contracts or current route shapes.
+5. [SFT_MLFLOW_LINEAGE_DESIGN.md](./worker/train_eval/SFT_MLFLOW_LINEAGE_DESIGN.md)
    Use this when planning MLflow-based SFT train/eval lineage coverage.
-7. [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md)
+6. [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md)
    Use this when configuring runtime defaults, deployment environments, or operator startup scripts.
-8. [V1_API_OPENAPI_STYLE.md](./V1_API_OPENAPI_STYLE.md)
-   Use this when working on frontend-backend contracts or CLI-facing resource shapes.
-9. [DATABASE_SCHEMA_DRAFT.md](./DATABASE_SCHEMA_DRAFT.md)
-   Use this when changing persistence or reasoning about data ownership.
-10. [DJ_WORKER_PAYLOAD_AND_SEQUENCE.md](./DJ_WORKER_PAYLOAD_AND_SEQUENCE.md)
+7. [DJ_WORKER_PAYLOAD_AND_SEQUENCE.md](./worker/data-juicer/DJ_WORKER_PAYLOAD_AND_SEQUENCE.md)
    Use this when changing worker execution or task claim payloads.
 
 ## Document Boundaries
@@ -63,48 +55,6 @@ Use it when:
 - checking whether a feature is already implemented
 - explaining the project to someone who needs the current truth quickly
 
-### [TARGET_ARCHITECTURE.md](./TARGET_ARCHITECTURE.md)
-
-What it covers:
-
-- the north-star architecture for the internal tool
-- the conceptual model of `Job`, `Run`, `RunSubmission`, `Task`, and `TaskAttempt`
-- why orchestration objects and lineage objects both exist
-- how control-plane and lineage concerns should stay separated
-
-What it does not cover:
-
-- exact V1 screens or CLI details
-- exact request and response payloads
-- exact database columns
-
-Use it when:
-
-- judging whether a code change matches the intended architecture
-- deciding where a new concept belongs
-- resolving conceptual overlap between lineage and orchestration models
-
-### [DJ_PROCESSING_V1_DESIGN.md](./DJ_PROCESSING_V1_DESIGN.md)
-
-What it covers:
-
-- the first product version focused on Data-Juicer processing
-- V1 user journey
-- V1 user-facing objects
-- V1 worker behavior and product boundaries
-
-What it does not cover:
-
-- the full long-term training/evaluation platform vision
-- exact SQL schema
-- full route-by-route API detail
-
-Use it when:
-
-- deciding whether something belongs in V1
-- reasoning about product scope and UX shape
-- implementing the DJ-only execution flow
-
 ### [CLI_REFERENCE.md](./CLI_REFERENCE.md)
 
 What it covers:
@@ -126,7 +76,7 @@ Use it when:
 - adding or refactoring CLI commands
 - checking how a user is expected to operate the backend from the terminal
 
-### [RUN_SUBMISSION_SPEC.md](./RUN_SUBMISSION_SPEC.md)
+### [RUN_SUBMISSION_SPEC.md](./run/RUN_SUBMISSION_SPEC.md)
 
 What it covers:
 
@@ -141,7 +91,28 @@ Use it when:
 - designing new submission kinds
 - reviewing processing spec examples
 
-### [SFT_MLFLOW_LINEAGE_DESIGN.md](./SFT_MLFLOW_LINEAGE_DESIGN.md)
+### [openapi.yaml](./api/openapi.yaml)
+
+What it covers:
+
+- the current FastAPI-generated HTTP API contract
+- request bodies
+- response schemas
+- current route and parameter shapes
+
+What it does not cover:
+
+- long-term API redesign ideas
+- service/repository internals
+- worker-local execution behavior
+
+Use it when:
+
+- aligning frontend and backend payloads
+- checking current route names and schemas
+- generating clients or API references
+
+### [SFT_MLFLOW_LINEAGE_DESIGN.md](./worker/train_eval/SFT_MLFLOW_LINEAGE_DESIGN.md)
 
 What it covers:
 
@@ -177,48 +148,7 @@ Use it when:
 - deploying backend or workers
 - removing hardcoded defaults from code
 
-### [V1_API_OPENAPI_STYLE.md](./V1_API_OPENAPI_STYLE.md)
-
-What it covers:
-
-- the intended V1 API contract in OpenAPI-like form
-- resource naming
-- payload structure
-- response structure
-
-What it does not cover:
-
-- internal service/repository design
-- SQL schema details
-- worker-local execution mechanics
-
-Use it when:
-
-- aligning backend and frontend payloads
-- adding new CLI commands
-- reviewing whether route shapes are consistent
-
-### [DATABASE_SCHEMA_DRAFT.md](./DATABASE_SCHEMA_DRAFT.md)
-
-What it covers:
-
-- the target data model by domain
-- what tables belong to organization, authoring, lineage, and dispatch
-- why lineage runtime facts and orchestration state should not be duplicated
-
-What it does not cover:
-
-- exact Alembic migration history
-- exact current `app/db/schema.py` implementation details
-- endpoint-level behavior
-
-Use it when:
-
-- changing table ownership or adding a new table
-- checking whether a concept belongs in asset catalog, lineage projection, or orchestration state
-- planning future schema evolution
-
-### [DJ_WORKER_PAYLOAD_AND_SEQUENCE.md](./DJ_WORKER_PAYLOAD_AND_SEQUENCE.md)
+### [DJ_WORKER_PAYLOAD_AND_SEQUENCE.md](./worker/data-juicer/DJ_WORKER_PAYLOAD_AND_SEQUENCE.md)
 
 What it covers:
 
@@ -245,10 +175,9 @@ When documents disagree, use this order:
 
 1. running code and tests
 2. [CURRENT_PROJECT.md](./CURRENT_PROJECT.md) for present-state behavior
-3. [V1_API_OPENAPI_STYLE.md](./V1_API_OPENAPI_STYLE.md) for intended API shape
-4. [DATABASE_SCHEMA_DRAFT.md](./DATABASE_SCHEMA_DRAFT.md) for intended data ownership
-5. [DJ_PROCESSING_V1_DESIGN.md](./DJ_PROCESSING_V1_DESIGN.md) for V1 scope decisions
-6. [TARGET_ARCHITECTURE.md](./TARGET_ARCHITECTURE.md) for long-term direction
+3. [openapi.yaml](./api/openapi.yaml) for current HTTP route and schema shape
+4. [RUN_SUBMISSION_SPEC.md](./run/RUN_SUBMISSION_SPEC.md) for current submission-spec behavior
+5. [README.md](./README.md) to find the right current document when the others are too narrow
 
 If code and docs diverge, the fix should be one of:
 

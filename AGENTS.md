@@ -28,11 +28,11 @@ Start with:
 
 Then use the focused design documents in `docs/`:
 
-- `docs/TARGET_ARCHITECTURE.md`
-- `docs/DJ_PROCESSING_V1_DESIGN.md`
-- `docs/DATABASE_SCHEMA_DRAFT.md`
-- `docs/V1_API_OPENAPI_STYLE.md`
-- `docs/DJ_WORKER_PAYLOAD_AND_SEQUENCE.md`
+- `docs/CLI_REFERENCE.md`
+- `docs/run/RUN_SUBMISSION_SPEC.md`
+- `docs/api/openapi.yaml`
+- `docs/worker/data-juicer/DJ_WORKER_PAYLOAD_AND_SEQUENCE.md`
+- `docs/worker/train_eval/SFT_MLFLOW_LINEAGE_DESIGN.md`
 
 ## Layout
 
