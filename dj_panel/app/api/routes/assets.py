@@ -5,7 +5,7 @@ from dj_panel.app.api.dependencies import get_asset_service
 from dj_panel.app.api.errors import not_found
 from dj_panel.app.models.api import AssetCreateRequest, AssetRenameRequest, AssetVersionCreateRequest
 from dj_panel.app.models.constant import AssetKind
-from dj_panel.app.services.assets import AssetService
+from dj_panel.app.services.assets_service import AssetService
 
 router = APIRouter(prefix="/api/v1", tags=["assets"])
 

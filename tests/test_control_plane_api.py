@@ -19,13 +19,13 @@ from dj_panel.app.api.dependencies import (
 from dj_panel.app.db.engine import get_engine
 from dj_panel.app.db.schema import execution_links, metadata
 from dj_panel.app.main import app
-from dj_panel.app.services.assets import AssetService
-from dj_panel.app.services.lineage import LineageService
-from dj_panel.app.services.recipes import RecipeService
-from dj_panel.app.services.run_submissions import RunSubmissionService
-from dj_panel.app.services.tasks import TaskService
-from dj_panel.app.services.workers import WorkerService
-from dj_panel.app.services.workspaces import WorkspaceService
+from dj_panel.app.services.assets_service import AssetService
+from dj_panel.app.services.lineage_service import LineageService
+from dj_panel.app.services.recipes_service import RecipeService
+from dj_panel.app.services.run_submissions_service import RunSubmissionService
+from dj_panel.app.services.tasks_service import TaskService
+from dj_panel.app.services.workers_service import WorkerService
+from dj_panel.app.services.workspaces_service import WorkspaceService
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

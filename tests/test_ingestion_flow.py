@@ -26,7 +26,7 @@ from dj_panel.app.db.schema import (
 from dj_panel.app.models.constant import DatasetLifecycleState, JobVersionIOType
 from dj_panel.app.models.protocols.openlineage import RunEventType
 from dj_panel.app.utils.openlineage_utils import parse_event
-from dj_panel.app.services.lineage import LineageService
+from dj_panel.app.services.lineage_service import LineageService
 from dj_panel.app.utils.common_utils import new_id, utc_now
 
 FIXTURES = Path(__file__).parent / 'fixtures'

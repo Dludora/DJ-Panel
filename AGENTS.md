@@ -42,8 +42,8 @@ Then use the focused design documents in `docs/`:
 - `app/models/protocols/`: external protocol schemas such as OpenLineage
 - `app/models/constant.py`: shared enums and constant mappings
 - `app/db/rows.py`: typed row mirrors for tables defined in `app/db/schema.py`
-- `app/repositories/`: SQLAlchemy Core persistence by domain
-- `app/services/`: orchestration layer that combines repositories into API behavior
+- `app/repositories/`: SQLAlchemy Core persistence by domain (`*_repo.py`)
+- `app/services/`: orchestration layer that combines repositories into API behavior (`*_service.py`)
 - `app/db/schema.py`: canonical merged table definitions for control-plane, asset catalog, and lineage projection
 - `alembic/versions/`: schema history for the control-plane, asset catalog, and lineage projection model
 - `cli/`: `dj-panel` command-line interface, including workspace/recipe/run commands and the DJ worker runtime

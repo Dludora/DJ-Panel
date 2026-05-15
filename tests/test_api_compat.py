@@ -14,8 +14,8 @@ from dj_panel.app.db.engine import get_engine
 from dj_panel.app.db.schema import metadata
 from dj_panel.app.main import app
 from dj_panel.app.models.api import IngestionStatus
-from dj_panel.app.services.assets import AssetService
-from dj_panel.app.services.lineage import LineageService
+from dj_panel.app.services.assets_service import AssetService
+from dj_panel.app.services.lineage_service import LineageService
 
 FIXTURES = Path(__file__).parent / 'fixtures'
 

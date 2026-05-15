@@ -7,11 +7,11 @@ from sqlalchemy.engine import Engine
 from dj_panel.app.execution.definitions import DEFAULT_DJ_COMMAND, DEFAULT_DJ_CONFIG_ARG
 from dj_panel.app.models.api import ProcessingRunSpec, RunSubmissionResponse, RunSubmissionsResponse
 from dj_panel.app.models.constant import AssetKind, RunSubmissionKind, RunSubmissionStatus, TaskKind, TaskStatus
-from dj_panel.app.repositories.assets import AssetRepository
-from dj_panel.app.repositories.recipes import RecipeRepository
-from dj_panel.app.repositories.run_submissions import RunSubmissionRepository
-from dj_panel.app.repositories.tasks import TaskRepository
-from dj_panel.app.repositories.workspaces import WorkspaceRepository
+from dj_panel.app.repositories.assets_repo import AssetRepository
+from dj_panel.app.repositories.recipes_repo import RecipeRepository
+from dj_panel.app.repositories.run_submissions_repo import RunSubmissionRepository
+from dj_panel.app.repositories.tasks_repo import TaskRepository
+from dj_panel.app.repositories.workspaces_repo import WorkspaceRepository
 from dj_panel.app.utils.common_utils import utc_now
 
 

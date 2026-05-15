@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, status
 from dj_panel.app.api.dependencies import get_run_submission_service
 from dj_panel.app.api.errors import conflict, not_found
 from dj_panel.app.models.api import RunSubmissionCreateRequest
-from dj_panel.app.services.run_submissions import RunSubmissionService
+from dj_panel.app.services.run_submissions_service import RunSubmissionService
 
 router = APIRouter(prefix="/api/v1", tags=["run-submissions"])
 

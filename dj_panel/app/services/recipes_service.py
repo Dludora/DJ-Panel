@@ -9,8 +9,8 @@ from dj_panel.app.models.api import (
     RecipeVersionResponse,
     RecipeVersionsResponse,
 )
-from dj_panel.app.repositories.recipes import RecipeRepository
-from dj_panel.app.repositories.workspaces import WorkspaceRepository
+from dj_panel.app.repositories.recipes_repo import RecipeRepository
+from dj_panel.app.repositories.workspaces_repo import WorkspaceRepository
 
 
 class RecipeService:

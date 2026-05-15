@@ -5,7 +5,7 @@ from dj_panel.app.api.dependencies import get_lineage_service
 from dj_panel.app.api.errors import bad_request, not_found, validation_error
 from dj_panel.app.models.api import IngestionResponse
 from dj_panel.app.utils.openlineage_utils import parse_event
-from dj_panel.app.services.lineage import LineageService
+from dj_panel.app.services.lineage_service import LineageService
 
 router = APIRouter(prefix="/api/v1", tags=["lineage"])
 

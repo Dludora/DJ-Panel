@@ -8,7 +8,7 @@ from dj_panel.app.models.api import (
     WorkspaceResponse,
     WorkspacesResponse,
 )
-from dj_panel.app.repositories.workspaces import WorkspaceRepository
+from dj_panel.app.repositories.workspaces_repo import WorkspaceRepository
 
 
 class WorkspaceService:

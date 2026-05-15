@@ -17,10 +17,10 @@ from dj_panel.app.models.protocols.openlineage import (
     RunEvent,
     RunEventType,
 )
-from dj_panel.app.repositories.execution_links import ExecutionLinkRepository
-from dj_panel.app.repositories.assets import AssetRepository
-from dj_panel.app.repositories.lineage import LineageRepository
-from dj_panel.app.repositories.tasks import TaskRepository
+from dj_panel.app.repositories.execution_links_repo import ExecutionLinkRepository
+from dj_panel.app.repositories.assets_repo import AssetRepository
+from dj_panel.app.repositories.lineage_repo import LineageRepository
+from dj_panel.app.repositories.tasks_repo import TaskRepository
 
 
 @dataclass(frozen=True)

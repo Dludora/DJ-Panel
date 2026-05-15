@@ -4,7 +4,7 @@ from sqlalchemy.engine import Engine
 
 from dj_panel.app.models.api import AssetCreateRequest, AssetRenameRequest, AssetVersionCreateRequest
 from dj_panel.app.models.constant import AssetCatalogSource, AssetKind
-from dj_panel.app.repositories.assets import AssetRepository
+from dj_panel.app.repositories.assets_repo import AssetRepository
 
 
 class AssetService:

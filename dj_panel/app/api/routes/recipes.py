@@ -6,7 +6,7 @@ from dj_panel.app.models.api import (
     RecipeCreateRequest,
     RecipeVersionCreateRequest,
 )
-from dj_panel.app.services.recipes import RecipeService
+from dj_panel.app.services.recipes_service import RecipeService
 
 router = APIRouter(prefix="/api/v1", tags=["recipes"])
 

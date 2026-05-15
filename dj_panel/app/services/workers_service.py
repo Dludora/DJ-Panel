@@ -3,8 +3,8 @@ from __future__ import annotations
 from sqlalchemy.engine import Engine
 
 from dj_panel.app.models.api import WorkerResponse, WorkersResponse
-from dj_panel.app.repositories.workers import WorkerRepository
-from dj_panel.app.repositories.workspaces import WorkspaceRepository
+from dj_panel.app.repositories.workers_repo import WorkerRepository
+from dj_panel.app.repositories.workspaces_repo import WorkspaceRepository
 
 
 class WorkerService:

@@ -6,7 +6,7 @@ from dj_panel.app.models.api import (
     WorkerHeartbeatRequest,
     WorkerRegisterRequest,
 )
-from dj_panel.app.services.workers import WorkerService
+from dj_panel.app.services.workers_service import WorkerService
 
 router = APIRouter(prefix="/api/v1", tags=["workers"])
 

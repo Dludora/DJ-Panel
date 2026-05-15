@@ -7,7 +7,7 @@ from dj_panel.app.models.api import (
     TaskClaimRequest,
     TaskTransitionRequest,
 )
-from dj_panel.app.services.tasks import TaskService
+from dj_panel.app.services.tasks_service import TaskService
 
 router = APIRouter(prefix="/api/v1", tags=["tasks"])
 

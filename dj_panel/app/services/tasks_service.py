@@ -19,12 +19,12 @@ from dj_panel.app.models.constant import (
     TaskKind,
     TaskStatus,
 )
-from dj_panel.app.repositories.execution_links import ExecutionLinkRepository
-from dj_panel.app.repositories.recipes import RecipeRepository
-from dj_panel.app.repositories.run_submissions import RunSubmissionRepository
-from dj_panel.app.repositories.tasks import TaskRepository
-from dj_panel.app.repositories.workers import WorkerRepository
-from dj_panel.app.repositories.workspaces import WorkspaceRepository
+from dj_panel.app.repositories.execution_links_repo import ExecutionLinkRepository
+from dj_panel.app.repositories.recipes_repo import RecipeRepository
+from dj_panel.app.repositories.run_submissions_repo import RunSubmissionRepository
+from dj_panel.app.repositories.tasks_repo import TaskRepository
+from dj_panel.app.repositories.workers_repo import WorkerRepository
+from dj_panel.app.repositories.workspaces_repo import WorkspaceRepository
 
 
 class TaskService:

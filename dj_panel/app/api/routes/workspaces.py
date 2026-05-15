@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from dj_panel.app.api.dependencies import get_workspace_service
 from dj_panel.app.api.errors import not_found
 from dj_panel.app.models.api import WorkspaceCreateRequest, WorkspaceMemberAddRequest
-from dj_panel.app.services.workspaces import WorkspaceService
+from dj_panel.app.services.workspaces_service import WorkspaceService
 
 router = APIRouter(prefix='/api/v1', tags=['workspaces'])
 

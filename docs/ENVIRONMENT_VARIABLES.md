@@ -72,7 +72,7 @@ Default:
 - `900`
 
 Used by:
-- task claim lease expiration in [app/repositories/tasks.py](/Users/dludora/Code/DJ-Panel/dj-panel-backend/app/repositories/tasks.py)
+- task claim lease expiration in [tasks_repo.py](/Users/dludora/Code/DJ-Panel/dj-panel-backend/dj_panel/app/repositories/tasks_repo.py)
 
 ## API / CLI Defaults
 
