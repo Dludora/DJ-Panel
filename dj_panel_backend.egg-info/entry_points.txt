@@ -1,2 +1,0 @@
-[console_scripts]
-dj-panel = dj_panel.cli:main

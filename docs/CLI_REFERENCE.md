@@ -74,11 +74,13 @@ dj-panel
 #### `dj-panel master`
 
 作用：
-- 启动 DJ Panel backend 的 FastAPI 服务
+
+- 启动 DJ Panel backend 服务
 - 可在启动前自动执行 Alembic migration
 - 开发模式下可开启 `uvicorn --reload`
 
 常见参数：
+
 - `--host`：服务监听地址，默认 `127.0.0.1`
 - `--port`：服务端口，默认 `8000`
 - `--database-url`：数据库连接串，会写入 `DATABASE_URL`
@@ -86,6 +88,7 @@ dj-panel
 - `--reload`：开发时开启热重载
 
 当前支持：
+
 - PostgreSQL
 - SQLite
 
@@ -104,11 +107,13 @@ dj-panel master --database-url sqlite:///./dj_panel.db --migrate
 #### `dj-panel web`
 
 作用：
+
 - 启动 `dj-panel-web` 的前端开发服务
 - 将 backend 地址通过环境变量注入前端
 - 可选自动安装前端依赖
 
 常见参数：
+
 - `--backend-url`：前端请求的 backend 地址
 - `--host`：前端 dev server 监听地址，默认 `127.0.0.1`
 - `--port`：前端 dev server 端口，默认 `1337`
@@ -126,6 +131,7 @@ dj-panel web --backend-url http://127.0.0.1:8000 --install-deps
 #### `dj-panel config`
 
 作用：
+
 - 维护 CLI 的本地默认配置
 - 避免每个命令都重复传 `--workspace`、`--user`、`--base-url`
 
@@ -140,11 +146,13 @@ dj-panel web --backend-url http://127.0.0.1:8000 --install-deps
 ##### `dj-panel config set`
 
 作用：
+
 - 设置默认 `workspace`
 - 设置默认 `user`
 - 设置默认 `base-url`
 
 常见参数：
+
 - `--workspace`
 - `--user`
 - `--base-url`
@@ -159,6 +167,7 @@ dj-panel config set --workspace llm-team --user alice --base-url http://127.0.0.
 ##### `dj-panel config show`
 
 作用：
+
 - 查看当前 CLI 默认配置
 
 示例：
@@ -172,10 +181,12 @@ dj-panel config show
 #### `dj-panel workspace create`
 
 作用：
+
 - 创建一个 workspace
 - 可选把这个 workspace 直接设为本地默认 workspace
 
 常见参数：
+
 - `slug`：workspace 的唯一标识
 - `--name`：展示名称，默认同 `slug`
 - `--description`
@@ -193,6 +204,7 @@ dj-panel workspace create llm-team --name "LLM Team" --owner alice --use
 #### `dj-panel workspace list`
 
 作用：
+
 - 列出 backend 当前已有的 workspace
 
 示例：
@@ -204,14 +216,17 @@ dj-panel workspace list
 #### `dj-panel workspace members add`
 
 作用：
+
 - 向某个 workspace 添加成员，或更新成员角色
 
 常见参数：
+
 - `--workspace`
 - `--user`
 - `--role`
 
 支持角色：
+
 - `OWNER`
 - `MAINTAINER`
 - `MEMBER`
@@ -226,6 +241,7 @@ dj-panel workspace members add --workspace llm-team --user bob --role MEMBER
 #### `dj-panel workspace members list`
 
 作用：
+
 - 查看某个 workspace 下的成员列表
 
 示例：
@@ -241,10 +257,12 @@ dj-panel workspace members list --workspace llm-team
 #### `dj-panel recipe import`
 
 作用：
+
 - 从本地 YAML 文件创建一个新的 recipe
 - 首次把 recipe 纳入平台管理
 
 常见参数：
+
 - `file`：本地 YAML 文件路径
 - `--workspace`
 - `--owner`
@@ -256,6 +274,7 @@ dj-panel workspace members list --workspace llm-team
 - `--json`
 
 CLI 内部会自动构造：
+
 - `recipeBody`
 - `scriptPath`
 - `parameterSchema`
@@ -272,6 +291,7 @@ dj-panel recipe import ./config_lineage.yaml --workspace llm-team --name lineage
 #### `dj-panel recipe list`
 
 作用：
+
 - 列出某个 workspace 下的 recipes
 
 示例：
@@ -283,6 +303,7 @@ dj-panel recipe list --workspace llm-team
 #### `dj-panel recipe show`
 
 作用：
+
 - 查看某个 recipe 的详情
 - 支持通过 `recipe id` 查询
 - 也支持通过 `workspace + recipe name` 查询
@@ -302,10 +323,12 @@ dj-panel recipe show --workspace llm-team --recipe lineage_base
 #### `dj-panel recipe publish`
 
 作用：
+
 - 为一个已存在的 recipe 发布新版本
 - 常用于更新 YAML、修改处理链路、发布新的 recipe version
 
 常见参数：
+
 - `file`
 - `--workspace`
 - `--recipe`：已存在的 recipe 名称
@@ -327,11 +350,13 @@ dj-panel recipe publish ./config_lineage_v2.yaml --workspace llm-team --recipe l
 #### `dj-panel run submit`
 
 作用：
+
 - 创建一次 `run submission`
 - 它表示“用户希望平台发起一次 processing、training 或 evaluation 运行”
 - 提交成功后，后端会基于 submission 展开可认领的 task
 
 常见参数：
+
 - `--workspace`
 - `--kind`：支持 `processing`、`training`、`evaluation`
 - `--requested-by`
@@ -341,6 +366,7 @@ dj-panel recipe publish ./config_lineage_v2.yaml --workspace llm-team --recipe l
 - `--json`
 
 注意：
+
 - 当 `--kind processing` 时：
   需要 `--spec`
 - 当 `--kind training` 或 `--kind evaluation` 时：
@@ -419,10 +445,12 @@ process:
 ```
 
 processing 当前还支持：
+
 - `process.dj_configs.mode = workspace_recipe`
 - `process.dj_configs.mode = local_file`
 
 其中 `local_file` 模式下：
+
 - CLI 会先本地解析 YAML
 - 然后把 `recipeBody` 嵌入提交 payload
 - worker 最终会把 `recipeBody`、submission `parameters` 和平台注入的 `work_dir` 合并成 panel 侧 `recipe.yaml`
@@ -430,21 +458,25 @@ processing 当前还支持：
 #### `dj-panel run list`
 
 作用：
+
 - 查看某个 workspace 下的 run submissions
 
 #### `dj-panel run show`
 
 作用：
+
 - 查看单个 run submission 的详情
 
 #### `dj-panel run resume`
 
 作用：
+
 - 恢复一个 `FAILED` 或 `CANCELLED` 的 run submission
 - 保留原有 `task_id`
 - 让 worker 后续基于同一个 DJ `job_id/work_dir` 创建新的 attempt
 
 当前限制：
+
 - 只支持 `FAILED` / `CANCELLED`
 - 不会创建新的 task，而是把原 task 重置回 `PENDING`
 
@@ -457,10 +489,12 @@ dj-panel run resume c42b30c2-8a86-43c4-a97d-bff1849ce1e7
 #### `dj-panel run cancel`
 
 作用：
+
 - 取消一个 `PENDING` 的 run submission
 - 会把对应 `run_submission` 和派生的 `task` 一起改成 `CANCELLED`
 
 当前限制：
+
 - 只支持 `PENDING`
 - 不处理中断已认领或运行中的 worker 进程
 
@@ -473,11 +507,14 @@ dj-panel run cancel bf3ea467-5805-46cd-a4b1-07df88242b97
 #### `dj-panel run logs`
 
 作用：
+
 - 预留命令
 
 当前状态：
+
 - 尚未实现
-```
+
+````
 
 ### 6. Worker 执行层
 
@@ -511,7 +548,7 @@ dj-panel run cancel bf3ea467-5805-46cd-a4b1-07df88242b97
 
 ```bash
 dj-process --config /.../tasks/<task_id>/recipe.yaml --job_id <task_id>
-```
+````
 
 6. 使用同一个 `<workdir>/tasks/<task_id>` 作为 DJ 的最终 `work_dir`
 7. 把执行输出写入 `<workdir>/tasks/<task_id>/run.log`，并把它注册为 `LOG` artifact
@@ -519,6 +556,7 @@ dj-process --config /.../tasks/<task_id>/recipe.yaml --job_id <task_id>
 9. 根据执行结果调用 `start` / `complete` / `fail`
 
 目录语义固定为：
+
 - `task_id == DJ job_id`
 - `task_dir = <workdir>/tasks/<task_id>`
 - worker 在 `cwd=task_dir` 下执行 DJ CLI
@@ -535,9 +573,11 @@ dj-process --config /.../tasks/<task_id>/recipe.yaml --job_id <task_id>
   - `metadata/`
 
 单次执行模式：
+
 - `--poll-interval <= 0` 时只尝试认领一次
 
 轮询模式：
+
 - `--poll-interval > 0` 时持续循环认领任务
 
 示例：
@@ -555,6 +595,7 @@ dj-panel worker dj \
 #### `dj-panel worker train`
 
 作用：
+
 - 启动一个 command-based training worker
 - 注册 worker
 - 周期性上报 heartbeat
@@ -563,6 +604,7 @@ dj-panel worker dj \
 - 注册日志文件 artifact 并更新任务状态
 
 常见参数：
+
 - `--base-url`
 - `--workspace`
 - `--worker-id`
@@ -584,6 +626,7 @@ dj-panel worker train \
 #### `dj-panel worker eval`
 
 作用：
+
 - 启动一个 command-based evaluation worker
 - 注册 worker
 - 周期性上报 heartbeat
@@ -592,6 +635,7 @@ dj-panel worker train \
 - 注册日志文件 artifact 并更新任务状态
 
 常见参数：
+
 - `--base-url`
 - `--workspace`
 - `--worker-id`
@@ -651,9 +695,11 @@ CLI 还会自动规范化这些写法：
 大部分命令支持 `--json`。
 
 不加 `--json` 时：
+
 - CLI 使用人类可读的表格或键值格式输出
 
 加上 `--json` 时：
+
 - 直接输出后端返回的 JSON 结果
 
 适合脚本化场景：
@@ -729,6 +775,7 @@ dj-panel worker train --workspace llm-team --worker-id train-node-01 --workdir /
 ### 10. 当前边界
 
 当前已覆盖：
+
 - backend 启动
 - web 开发服务启动
 - workspace 管理
@@ -739,6 +786,7 @@ dj-panel worker train --workspace llm-team --worker-id train-node-01 --workdir /
 - command-based evaluation worker 执行
 
 当前 CLI 还没有覆盖得很完整的内容：
+
 - 更丰富的 run submission 查询与管理命令
 - 手动 task 运维命令
 - lineage 数据查询命令
@@ -799,11 +847,13 @@ dj-panel
 #### `dj-panel master`
 
 Purpose:
+
 - Start the DJ Panel backend FastAPI server
 - Optionally run Alembic migrations before startup
 - Optionally enable `uvicorn --reload` for local development
 
 Common arguments:
+
 - `--host`: bind address, default `127.0.0.1`
 - `--port`: server port, default `8000`
 - `--database-url`: database connection string; exported as `DATABASE_URL`
@@ -811,6 +861,7 @@ Common arguments:
 - `--reload`: enable hot reload for development
 
 Currently supported:
+
 - PostgreSQL
 - SQLite
 
@@ -829,11 +880,13 @@ dj-panel master --database-url sqlite:///./dj_panel.db --migrate
 #### `dj-panel web`
 
 Purpose:
+
 - Start the `dj-panel-web` frontend development server
 - Inject the backend URL into the frontend through environment variables
 - Optionally install frontend dependencies before startup
 
 Common arguments:
+
 - `--backend-url`: backend origin used by the frontend
 - `--host`: frontend dev server bind address, default `127.0.0.1`
 - `--port`: frontend dev server port, default `1337`
@@ -851,6 +904,7 @@ dj-panel web --backend-url http://127.0.0.1:8000 --install-deps
 #### `dj-panel config`
 
 Purpose:
+
 - Manage local CLI defaults
 - Avoid repeating `--workspace`, `--user`, and `--base-url` on every command
 
@@ -863,11 +917,13 @@ Local config path:
 ##### `dj-panel config set`
 
 Purpose:
+
 - Set the default `workspace`
 - Set the default `user`
 - Set the default `base-url`
 
 Common arguments:
+
 - `--workspace`
 - `--user`
 - `--base-url`
@@ -882,6 +938,7 @@ dj-panel config set --workspace llm-team --user alice --base-url http://127.0.0.
 ##### `dj-panel config show`
 
 Purpose:
+
 - Show the current local CLI defaults
 
 Example:
@@ -895,10 +952,12 @@ dj-panel config show
 #### `dj-panel workspace create`
 
 Purpose:
+
 - Create a workspace
 - Optionally store it as the local default workspace immediately
 
 Common arguments:
+
 - `slug`: unique workspace identifier
 - `--name`: display name, defaults to `slug`
 - `--description`
@@ -916,6 +975,7 @@ dj-panel workspace create llm-team --name "LLM Team" --owner alice --use
 #### `dj-panel workspace list`
 
 Purpose:
+
 - List workspaces currently available on the backend
 
 Example:
@@ -927,14 +987,17 @@ dj-panel workspace list
 #### `dj-panel workspace members add`
 
 Purpose:
+
 - Add a member to a workspace or update that member's role
 
 Common arguments:
+
 - `--workspace`
 - `--user`
 - `--role`
 
 Supported roles:
+
 - `OWNER`
 - `MAINTAINER`
 - `MEMBER`
@@ -949,6 +1012,7 @@ dj-panel workspace members add --workspace llm-team --user bob --role MEMBER
 #### `dj-panel workspace members list`
 
 Purpose:
+
 - List the members of a workspace
 
 Example:
@@ -965,10 +1029,12 @@ a recipe is treated as the reusable processing definition managed by the platfor
 #### `dj-panel recipe import`
 
 Purpose:
+
 - Create a new recipe from a local YAML file
 - Bring a recipe into the platform for the first time
 
 Common arguments:
+
 - `file`: local YAML file path
 - `--workspace`
 - `--owner`
@@ -980,6 +1046,7 @@ Common arguments:
 - `--json`
 
 The CLI automatically builds:
+
 - `recipeBody`
 - `scriptPath`
 - `parameterSchema`
@@ -996,6 +1063,7 @@ dj-panel recipe import ./config_lineage.yaml --workspace llm-team --name lineage
 #### `dj-panel recipe list`
 
 Purpose:
+
 - List recipes in a workspace
 
 Example:
@@ -1007,6 +1075,7 @@ dj-panel recipe list --workspace llm-team
 #### `dj-panel recipe show`
 
 Purpose:
+
 - Show the details of a recipe
 - Supports lookup by `recipe id`
 - Also supports lookup by `workspace + recipe name`
@@ -1026,10 +1095,12 @@ dj-panel recipe show --workspace llm-team --recipe lineage_base
 #### `dj-panel recipe publish`
 
 Purpose:
+
 - Publish a new version of an existing recipe
 - Commonly used when the YAML changes and a new recipe version should be released
 
 Common arguments:
+
 - `file`
 - `--workspace`
 - `--recipe`: existing recipe name
@@ -1051,11 +1122,13 @@ dj-panel recipe publish ./config_lineage_v2.yaml --workspace llm-team --recipe l
 #### `dj-panel run submit`
 
 Purpose:
+
 - Create a `run submission`
 - It represents a user request for the platform to launch one processing, training, or evaluation run
 - After creation, the backend expands the submission into a claimable task
 
 Common arguments:
+
 - `--workspace`
 - `--kind`: supports `processing`, `training`, and `evaluation`
 - `--requested-by`
@@ -1065,6 +1138,7 @@ Common arguments:
 - `--json`
 
 Notes:
+
 - When `--kind processing` is used:
   `--spec` is required
 - When `--kind training` or `--kind evaluation` is used:
@@ -1143,10 +1217,12 @@ process:
 ```
 
 Processing currently also supports:
+
 - `process.dj_configs.mode = workspace_recipe`
 - `process.dj_configs.mode = local_file`
 
 In `local_file` mode:
+
 - the CLI parses the YAML locally
 - embeds `recipeBody` in the submission payload
 - the worker materializes panel-side `recipe.yaml` by merging `recipeBody`, submission `parameters`, and the platform-injected `work_dir`
@@ -1154,21 +1230,25 @@ In `local_file` mode:
 #### `dj-panel run list`
 
 Purpose:
+
 - List run submissions in a workspace
 
 #### `dj-panel run show`
 
 Purpose:
+
 - Show one run submission in detail
 
 #### `dj-panel run resume`
 
 Purpose:
+
 - Resume a `FAILED` or `CANCELLED` run submission
 - Keep the original `task_id`
 - Let the next worker attempt reuse the same DJ `job_id/work_dir`
 
 Current limits:
+
 - Only `FAILED` / `CANCELLED` are supported
 - No new task is created; the original task is reset to `PENDING`
 
@@ -1181,10 +1261,12 @@ dj-panel run resume c42b30c2-8a86-43c4-a97d-bff1849ce1e7
 #### `dj-panel run cancel`
 
 Purpose:
+
 - Cancel a `PENDING` run submission
 - Mark both the submission and its derived task as `CANCELLED`
 
 Current limits:
+
 - Only `PENDING` is supported
 - Running workers are not interrupted by this command
 
@@ -1197,11 +1279,14 @@ dj-panel run cancel bf3ea467-5805-46cd-a4b1-07df88242b97
 #### `dj-panel run logs`
 
 Purpose:
+
 - Reserved command
 
 Current status:
+
 - Not implemented yet
-```
+
+````
 
 ### 6. Worker Execution Layer
 
@@ -1235,7 +1320,7 @@ Key behavior:
 
 ```bash
 dj-process --config /.../tasks/<task_id>/recipe.yaml --job_id <task_id>
-```
+````
 
 6. Use that same task directory as DJ's final `work_dir`
 7. Write execution output to `<workdir>/tasks/<task_id>/run.log` and register it as a `LOG` artifact
@@ -1243,9 +1328,11 @@ dj-process --config /.../tasks/<task_id>/recipe.yaml --job_id <task_id>
 9. Transition the task through `start`, `complete`, or `fail`
 
 Single-shot mode:
+
 - If `--poll-interval <= 0`, the worker claims at most once
 
 Polling mode:
+
 - If `--poll-interval > 0`, the worker loops continuously
 
 Example:
@@ -1263,6 +1350,7 @@ dj-panel worker dj \
 #### `dj-panel worker train`
 
 Purpose:
+
 - Start a command-based training worker
 - Register the worker
 - Send periodic heartbeats
@@ -1271,6 +1359,7 @@ Purpose:
 - Register log file artifacts and task transitions back to the backend
 
 Common arguments:
+
 - `--base-url`
 - `--workspace`
 - `--worker-id`
@@ -1292,6 +1381,7 @@ dj-panel worker train \
 #### `dj-panel worker eval`
 
 Purpose:
+
 - Start a command-based evaluation worker
 - Register the worker
 - Send periodic heartbeats
@@ -1300,6 +1390,7 @@ Purpose:
 - Register log file artifacts and task transitions back to the backend
 
 Common arguments:
+
 - `--base-url`
 - `--workspace`
 - `--worker-id`
@@ -1359,9 +1450,11 @@ If the command requires a user identity and none can be resolved, the command fa
 Most commands support `--json`.
 
 Without `--json`:
+
 - The CLI prints human-readable tables or key-value output
 
 With `--json`:
+
 - The CLI prints raw JSON returned by the backend
 
 Useful for scripting:
@@ -1437,6 +1530,7 @@ dj-panel worker train --workspace llm-team --worker-id train-node-01 --workdir /
 ### 10. Current Boundaries
 
 The CLI already covers:
+
 - backend startup
 - web dev server startup
 - workspace management
@@ -1447,6 +1541,7 @@ The CLI already covers:
 - command-based evaluation worker execution
 
 The CLI does not yet fully cover:
+
 - `run logs`
 - manual task operations
 - lineage query commands
