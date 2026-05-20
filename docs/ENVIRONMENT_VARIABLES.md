@@ -151,11 +151,11 @@ Used by:
 
 Default:
 - unset as a literal env var
-- if unset in the environment, the runtime default path is the sibling `dj-panel-web` directory next to `dj-panel-backend`
+- if unset in the environment, the runtime default path is the in-repo `web/` directory inside `dj-panel-backend`
 
 Used by:
 - `dj-panel web --web-dir` default value
-- if unset, CLI falls back to the sibling `dj-panel-web` directory
+- if unset, CLI falls back to the in-repo `web/` directory
 
 ### `DJ_PANEL_NPM_BIN`
 

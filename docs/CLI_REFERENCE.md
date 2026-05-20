@@ -108,7 +108,7 @@ dj-panel master --database-url sqlite:///./dj_panel.db --migrate
 
 作用：
 
-- 启动 `dj-panel-web` 的前端开发服务
+- 启动仓库内 `web/` 的前端开发服务
 - 将 backend 地址通过环境变量注入前端
 - 可选自动安装前端依赖
 
@@ -117,7 +117,7 @@ dj-panel master --database-url sqlite:///./dj_panel.db --migrate
 - `--backend-url`：前端请求的 backend 地址
 - `--host`：前端 dev server 监听地址，默认 `127.0.0.1`
 - `--port`：前端 dev server 端口，默认 `1337`
-- `--web-dir`：前端工程目录，默认自动定位 `dj-panel-web`
+- `--web-dir`：前端工程目录，默认自动定位仓库内的 `web/`
 - `--npm-bin`：`npm` 可执行文件名，默认 `npm`
 - `--install-deps`：启动前先执行 `npm install`
 - `--open`：启动时自动打开浏览器
@@ -901,7 +901,7 @@ dj-panel master --database-url sqlite:///./dj_panel.db --migrate
 
 Purpose:
 
-- Start the `dj-panel-web` frontend development server
+- Start the in-repo `web/` frontend development server
 - Inject the backend URL into the frontend through environment variables
 - Optionally install frontend dependencies before startup
 
@@ -910,7 +910,7 @@ Common arguments:
 - `--backend-url`: backend origin used by the frontend
 - `--host`: frontend dev server bind address, default `127.0.0.1`
 - `--port`: frontend dev server port, default `1337`
-- `--web-dir`: frontend project directory; defaults to auto-detected `dj-panel-web`
+- `--web-dir`: frontend project directory; defaults to the in-repo `web/` directory
 - `--npm-bin`: npm executable name, default `npm`
 - `--install-deps`: run `npm install` before startup
 - `--open`: open a browser window automatically

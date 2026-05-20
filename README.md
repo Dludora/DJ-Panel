@@ -44,8 +44,9 @@ From the backend operator's point of view, the fastest local setup is:
 
 1. install dependencies
 2. start the backend with a local SQLite database
-3. configure your local CLI defaults
-4. create a workspace and start using `recipe` / `run` / `worker`
+3. optionally start the web dev server
+4. configure your local CLI defaults
+5. create a workspace and start using `recipe` / `run` / `worker`
 
 ### 1. Install
 
@@ -88,7 +89,26 @@ The backend will be available at:
 http://127.0.0.1:8000
 ```
 
-### 3. Configure local CLI defaults
+### 3. Start the web dev server
+
+Once the backend is running, you can start the in-repo frontend dev server:
+
+```bash
+dj-panel web --backend-url http://127.0.0.1:8000 --install-deps
+```
+
+The web app will be available at:
+
+```text
+http://127.0.0.1:1337
+```
+
+Notes:
+
+- `dj-panel web` uses the in-repo `web/` directory by default.
+- `--install-deps` runs `npm install` before startup; you usually only need it the first time or after frontend dependency changes.
+
+### 4. Configure local CLI defaults
 
 Set the base URL and your common local defaults before creating resources:
 
@@ -101,7 +121,7 @@ dj-panel config set \
 dj-panel config show
 ```
 
-### 4. Create a workspace
+### 5. Create a workspace
 
 ```bash
 dj-panel workspace create team-a \

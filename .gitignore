@@ -4,3 +4,5 @@ __pycache__/
 *.pyc
 *.db
 *.egg-info/
+web/node_modules/
+web/dist/

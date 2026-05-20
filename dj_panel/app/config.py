@@ -104,7 +104,7 @@ class Settings(BaseSettings):
     def web_dir_path(self) -> Path:
         if self.web_dir:
             return Path(self.web_dir).expanduser()
-        return Path(__file__).resolve().parents[2] / "dj-panel-web"
+        return Path(__file__).resolve().parents[2] / "web"
 
     @property
     def cli_config_path_obj(self) -> Path:
