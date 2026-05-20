@@ -10,4 +10,3 @@ def new_id() -> str:
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
-

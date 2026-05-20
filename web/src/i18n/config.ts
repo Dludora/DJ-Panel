@@ -694,7 +694,7 @@ i18next
             empty_body: '尝试更改日期或查看我们的文档以添加事件。',
           },
         },
-      }, 
+      },
     },
     defaultNS,
     detection: DETECTION_OPTIONS,

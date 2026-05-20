@@ -57,6 +57,17 @@ uv sync --extra dev
 cp .env.example .env
 ```
 
+Optional but recommended for contributors:
+
+```bash
+pre-commit install
+```
+
+This enables lightweight local checks before each commit:
+
+- basic file hygiene (`yaml`, `toml`, merge conflicts, trailing whitespace)
+- Python syntax validation with `python -m py_compile`
+
 ### 2. Start the backend with SQLite
 
 SQLite is the recommended default for first local startup.

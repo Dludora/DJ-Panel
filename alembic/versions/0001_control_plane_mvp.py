@@ -1,7 +1,7 @@
 """control plane MVP schema
 
 Revision ID: 0001_control_plane_mvp
-Revises: 
+Revises:
 Create Date: 2026-04-23
 """
 
