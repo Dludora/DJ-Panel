@@ -262,7 +262,7 @@ def test_recipe_download_writes_current_recipe_yaml(
     monkeypatch.setattr(cli_commands, 'client', lambda base_url: _FakeClient())
 
     output_path = tmp_path / 'downloaded.yaml'
-    cli_commands.cmd_recipe_download(
+    cli_commands.RecipeCommands().download(
         argparse.Namespace(
             base_url=None,
             recipe_id='recipe-1',

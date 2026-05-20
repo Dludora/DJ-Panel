@@ -64,7 +64,7 @@ def test_start_then_complete_updates_run_and_creates_job_version_and_dataset_ver
     complete_event = parse_event(complete_payload)
 
     start_result = ingestion_service.ingest(start_event, start_payload)
-    assert start_result.projected is True
+    assert start_result is True
 
     with engine.begin() as conn:
         run_row = conn.execute(select(runs)).mappings().one()
@@ -83,7 +83,7 @@ def test_start_then_complete_updates_run_and_creates_job_version_and_dataset_ver
         assert model_dataset["current_version_id"] is None
 
     complete_result = ingestion_service.ingest(complete_event, complete_payload)
-    assert complete_result.projected is True
+    assert complete_result is True
 
     with engine.begin() as conn:
         run_row = conn.execute(select(runs)).mappings().one()
@@ -202,8 +202,8 @@ def test_job_and_dataset_events_are_accepted_and_distinguished(ingestion_service
     dataset_result = ingestion_service.ingest(parse_event(dataset_payload), dataset_payload)
     job_result = ingestion_service.ingest(parse_event(job_payload), job_payload)
 
-    assert dataset_result.projected is True
-    assert job_result.projected is True
+    assert dataset_result is True
+    assert job_result is True
 
     with engine.begin() as conn:
         dataset_rows = conn.execute(select(datasets)).mappings().all()

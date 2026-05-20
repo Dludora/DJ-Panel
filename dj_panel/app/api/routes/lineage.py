@@ -20,8 +20,8 @@ async def create_lineage_event(
         event = parse_event(payload)
     except ValidationError as exc:
         raise validation_error(exc.errors()) from exc
-    result = service.ingest(event, payload)
-    return IngestionResponse(projected=result.projected)
+    projected = service.ingest(event, payload)
+    return IngestionResponse(projected=projected)
 
 
 @router.get("/lineage")

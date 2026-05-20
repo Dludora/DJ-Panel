@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import dataclass
 from enum import Enum
 
 from sqlalchemy import select
@@ -23,19 +22,9 @@ from dj_panel.app.repositories.lineage_repo import LineageRepository
 from dj_panel.app.repositories.tasks_repo import TaskRepository
 
 
-@dataclass(frozen=True)
-class IngestionResult:
-    projected: bool
-
-
-class NodeType(str, Enum):
+class LineageNodeIdType(str, Enum):
     JOB = "job"
     DATASET = "dataset"
-
-
-class GraphNodeType(str, Enum):
-    JOB = "JOB"
-    DATASET = "DATASET"
 
 
 class LineageService:
@@ -46,22 +35,22 @@ class LineageService:
         self.execution_links_repo = ExecutionLinkRepository()
         self.task_repo = TaskRepository()
 
-    def ingest(self, event: OpenLineageEvent, raw_payload: dict) -> IngestionResult:
+    def ingest(self, event: OpenLineageEvent, raw_payload: dict) -> bool:
         with self.engine.begin() as conn:
             self.lineage_repo.insert_raw_event(conn, event, raw_payload)
             if isinstance(event, DatasetEvent):
                 self._ingest_dataset_event(conn, event)
-                return IngestionResult(projected=True)
+                return True
 
             if isinstance(event, JobEvent):
                 self._ingest_job_event(conn, event)
-                return IngestionResult(projected=True)
+                return True
 
             if isinstance(event, RunEvent):
                 self._ingest_run_event(conn, event)
-                return IngestionResult(projected=True)
+                return True
 
-        return IngestionResult(projected=True)
+        return True
 
     def _ingest_dataset_event(self, conn, event: DatasetEvent) -> None:
         self.lineage_repo.upsert_namespace(conn, event.dataset.namespace)
@@ -304,7 +293,7 @@ class LineageService:
                     continue
                 visited.add(current_id)
 
-                if current_type == NodeType.JOB.value:
+                if current_type == LineageNodeIdType.JOB.value:
                     job = self.lineage_repo.get_job_by_name(
                         conn, current_ns, current_name
                     )
@@ -337,7 +326,7 @@ class LineageService:
                         if current_depth < depth:
                             queue.append(
                                 (
-                                    NodeType.DATASET.value,
+                                    LineageNodeIdType.DATASET.value,
                                     asset.namespace,
                                     asset.name,
                                     current_depth + 1,
@@ -352,7 +341,7 @@ class LineageService:
                         if current_depth < depth:
                             queue.append(
                                 (
-                                    NodeType.DATASET.value,
+                                    LineageNodeIdType.DATASET.value,
                                     asset.namespace,
                                     asset.name,
                                     current_depth + 1,
@@ -387,7 +376,7 @@ class LineageService:
                         if current_depth < depth:
                             queue.append(
                                 (
-                                    NodeType.JOB.value,
+                                    LineageNodeIdType.JOB.value,
                                     job.namespace,
                                     job.name,
                                     current_depth + 1,
@@ -402,7 +391,7 @@ class LineageService:
                         if current_depth < depth:
                             queue.append(
                                 (
-                                    NodeType.JOB.value,
+                                    LineageNodeIdType.JOB.value,
                                     job.namespace,
                                     job.name,
                                     current_depth + 1,
@@ -459,7 +448,10 @@ class LineageService:
                 "nodeId must look like job:namespace:name or dataset:namespace:name"
             ) from exc
 
-        if node_type not in {NodeType.JOB.value, NodeType.DATASET.value}:
+        if node_type not in {
+            LineageNodeIdType.JOB.value,
+            LineageNodeIdType.DATASET.value,
+        }:
             raise ValueError(
                 "nodeId must look like job:namespace:name or dataset:namespace:name"
             )
@@ -467,26 +459,28 @@ class LineageService:
 
     @staticmethod
     def _ensure_job_node(nodes: dict[str, Node], job) -> None:
-        node_id = f"{NodeType.JOB.value}:{job.namespace}:{job.name}"
+        node_id = f"{LineageNodeIdType.JOB.value}:{job.namespace}:{job.name}"
         nodes.setdefault(
             node_id,
-            Node(id=node_id, type=GraphNodeType.JOB.value, data=job.to_api_dict()),
+            Node(id=node_id, type="JOB", data=job.to_api_dict()),
         )
 
     @staticmethod
     def _ensure_dataset_node(nodes: dict[str, Node], dataset) -> None:
-        node_id = f"{NodeType.DATASET.value}:{dataset.namespace}:{dataset.name}"
+        node_id = f"{LineageNodeIdType.DATASET.value}:{dataset.namespace}:{dataset.name}"
         nodes.setdefault(
             node_id,
             Node(
-                id=node_id, type=GraphNodeType.DATASET.value, data=dataset.to_api_dict()
+                id=node_id, type="DATASET", data=dataset.to_api_dict()
             ),
         )
 
     @staticmethod
     def _link(nodes: dict[str, Node], dataset, job, io_type: JobVersionIOType) -> None:
-        dataset_id = f"{NodeType.DATASET.value}:{dataset.namespace}:{dataset.name}"
-        job_id = f"{NodeType.JOB.value}:{job.namespace}:{job.name}"
+        dataset_id = (
+            f"{LineageNodeIdType.DATASET.value}:{dataset.namespace}:{dataset.name}"
+        )
+        job_id = f"{LineageNodeIdType.JOB.value}:{job.namespace}:{job.name}"
         if io_type == JobVersionIOType.INPUT:
             edge = Edge(origin=dataset_id, destination=job_id)
             if edge not in nodes[job_id].in_edges:
