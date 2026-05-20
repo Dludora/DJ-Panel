@@ -172,6 +172,21 @@ def build_parser() -> argparse.ArgumentParser:
     recipe_show.add_argument("--recipe", default=None)
     add_json_output_flag(recipe_show)
     recipe_show.set_defaults(command_key="recipe.show")
+    recipe_download = recipe_sub.add_parser(
+        "download", help="Download the current recipe body as YAML"
+    )
+    add_base_url_flag(recipe_download)
+    recipe_download.add_argument("--recipe-id", default=None)
+    recipe_download.add_argument("--workspace", default=None)
+    recipe_download.add_argument("--recipe", default=None)
+    recipe_download.add_argument(
+        "--output",
+        "-o",
+        default=None,
+        help="Output YAML path; defaults to <recipe-name>.yaml in the current directory",
+    )
+    add_json_output_flag(recipe_download)
+    recipe_download.set_defaults(command_key="recipe.download")
     recipe_publish = recipe_sub.add_parser(
         "publish", help="Publish a new version of an existing recipe"
     )

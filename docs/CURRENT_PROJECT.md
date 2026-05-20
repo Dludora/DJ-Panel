@@ -76,6 +76,7 @@ Implemented:
 - `dj-panel recipe import`
 - `dj-panel recipe list`
 - `dj-panel recipe show`
+- `dj-panel recipe download`
 - `dj-panel recipe publish`
 - `dj-panel run submit`
 - `dj-panel run list`

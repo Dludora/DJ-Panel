@@ -406,20 +406,15 @@ def render_recipe_list(payload: dict[str, Any]) -> None:
 
 
 def render_recipe(payload: dict[str, Any]) -> None:
+    print(dump_recipe_yaml(payload), end="")
+
+
+def dump_recipe_yaml(payload: dict[str, Any]) -> str:
     current = payload.get("currentVersion") or {}
-    print_kv(
-        [
-            ("Recipe", payload.get("name")),
-            ("Recipe ID", payload.get("id")),
-            ("Workspace ID", payload.get("workspaceId")),
-            ("Owner", payload.get("ownerName")),
-            ("Description", payload.get("description")),
-            ("Current Version", current.get("versionNumber")),
-            ("Current Version ID", current.get("id")),
-            ("Created", payload.get("createdAt")),
-            ("Updated", payload.get("updatedAt")),
-        ]
-    )
+    recipe_body = current.get("recipeBody")
+    if not isinstance(recipe_body, dict):
+        raise ValueError("recipe does not have a current version recipe body")
+    return yaml.safe_dump(recipe_body, sort_keys=False, allow_unicode=True)
 
 
 def render_recipe_version(payload: dict[str, Any]) -> None:

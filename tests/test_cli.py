@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+import argparse
 
 import pytest
 
+import dj_panel.cli.commands as cli_commands
 from dj_panel.cli import (
     DEFAULT_DJ_EXECUTION_SPEC,
     DEFAULT_DJ_COMMAND,
     _build_recipe_create_request,
+    _dump_recipe_yaml,
     _load_env_overrides,
     _load_json_arg,
     _load_processing_run_spec,
@@ -15,6 +18,7 @@ from dj_panel.cli import (
     _load_structured_arg,
     _normalize_base_url,
     _render_config,
+    _render_recipe,
     _render_recipe_list,
 )
 
@@ -183,6 +187,97 @@ def test_render_recipe_list_uses_table_output(capsys: pytest.CaptureFixture[str]
     assert 'lineage_base' in output
 
 
+def test_dump_recipe_yaml_preserves_yaml_shape() -> None:
+    recipe_yaml = _dump_recipe_yaml(
+        {
+            'name': 'lineage_base',
+            'currentVersion': {
+                'recipeBody': {
+                    'project_name': 'loop-demo',
+                    'dataset': {'configs': [{'type': 'local', 'path': '/data/raw.jsonl'}]},
+                    'np': 4,
+                }
+            },
+        }
+    )
+
+    assert 'project_name: loop-demo' in recipe_yaml
+    assert 'dataset:' in recipe_yaml
+    assert 'configs:' in recipe_yaml
+    assert 'np: 4' in recipe_yaml
+
+
+def test_render_recipe_prints_current_recipe_yaml(capsys: pytest.CaptureFixture[str]) -> None:
+    _render_recipe(
+        {
+            'name': 'lineage_base',
+            'currentVersion': {
+                'recipeBody': {
+                    'project_name': 'loop-demo',
+                    'export_path': '/data/out.jsonl',
+                }
+            },
+        }
+    )
+
+    output = capsys.readouterr().out
+    assert 'project_name: loop-demo' in output
+    assert 'export_path: /data/out.jsonl' in output
+
+
+def test_recipe_download_writes_current_recipe_yaml(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    recipe_payload = {
+        'id': 'recipe-1',
+        'name': 'lineage_base',
+        'currentVersion': {
+            'recipeBody': {
+                'project_name': 'loop-demo',
+                'export_path': '/data/out.jsonl',
+            }
+        },
+    }
+
+    class _FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return recipe_payload
+
+    class _FakeClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def get(self, path: str):
+            assert path == '/api/v1/recipes/recipe-1'
+            return _FakeResponse()
+
+    monkeypatch.setattr(cli_commands, 'load_cli_config', lambda: {})
+    monkeypatch.setattr(cli_commands, 'resolve_base_url', lambda args, config: 'http://127.0.0.1:8000')
+    monkeypatch.setattr(cli_commands, 'client', lambda base_url: _FakeClient())
+
+    output_path = tmp_path / 'downloaded.yaml'
+    cli_commands.cmd_recipe_download(
+        argparse.Namespace(
+            base_url=None,
+            recipe_id='recipe-1',
+            workspace=None,
+            recipe=None,
+            output=str(output_path),
+            json=False,
+        )
+    )
+
+    assert output_path.exists()
+    assert 'project_name: loop-demo' in output_path.read_text(encoding='utf-8')
+    assert str(output_path.resolve()) in capsys.readouterr().out
+
+
 def test_emit_config_show_uses_human_readable_output(capsys: pytest.CaptureFixture[str]) -> None:
     _render_config({'workspace': 'llm-team', 'user': 'alice', 'base_url': 'http://127.0.0.1:8000'})
 
@@ -206,6 +301,22 @@ def test_run_submit_help_is_available(capsys: pytest.CaptureFixture[str], monkey
     assert '--parameters' in output
     assert '--env' in output
     assert '--env-file' in output
+
+
+def test_recipe_download_help_is_available(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from dj_panel.cli import main
+
+    monkeypatch.setattr('sys.argv', ['dj-panel', 'recipe', 'download', '--help'])
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert exc.value.code == 0
+    output = capsys.readouterr().out
+    assert '--recipe-id' in output
+    assert '--recipe' in output
+    assert '--output' in output
 
 
 def test_run_lifecycle_help_is_available(

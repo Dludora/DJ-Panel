@@ -304,7 +304,7 @@ dj-panel recipe list --workspace llm-team
 
 作用：
 
-- 查看某个 recipe 的详情
+- 直接查看某个 recipe 当前版本的 YAML 内容
 - 支持通过 `recipe id` 查询
 - 也支持通过 `workspace + recipe name` 查询
 
@@ -318,6 +318,26 @@ dj-panel recipe show --recipe-id <recipe-id>
 
 ```bash
 dj-panel recipe show --workspace llm-team --recipe lineage_base
+```
+
+#### `dj-panel recipe download`
+
+作用：
+
+- 下载某个 recipe 当前版本的 YAML 到本地文件
+- 支持通过 `recipe id` 查询
+- 也支持通过 `workspace + recipe name` 查询
+
+查询方式一：
+
+```bash
+dj-panel recipe download --recipe-id <recipe-id> --output ./recipe.yaml
+```
+
+查询方式二：
+
+```bash
+dj-panel recipe download --workspace llm-team --recipe lineage_base --output ./lineage_base.yaml
 ```
 
 #### `dj-panel recipe publish`
@@ -1076,7 +1096,7 @@ dj-panel recipe list --workspace llm-team
 
 Purpose:
 
-- Show the details of a recipe
+- Print the current recipe body as YAML
 - Supports lookup by `recipe id`
 - Also supports lookup by `workspace + recipe name`
 
@@ -1090,6 +1110,26 @@ Lookup by workspace and name:
 
 ```bash
 dj-panel recipe show --workspace llm-team --recipe lineage_base
+```
+
+#### `dj-panel recipe download`
+
+Purpose:
+
+- Download the current recipe body as a local YAML file
+- Supports lookup by `recipe id`
+- Also supports lookup by `workspace + recipe name`
+
+Lookup by id:
+
+```bash
+dj-panel recipe download --recipe-id <recipe-id> --output ./recipe.yaml
+```
+
+Lookup by workspace and name:
+
+```bash
+dj-panel recipe download --workspace llm-team --recipe lineage_base --output ./lineage_base.yaml
 ```
 
 #### `dj-panel recipe publish`

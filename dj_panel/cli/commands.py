@@ -20,6 +20,7 @@ from dj_panel.cli.utils import (
     build_recipe_create_request,
     build_recipe_version_request,
     client,
+    dump_recipe_yaml,
     find_recipe_by_name,
     load_cli_config,
     load_env_overrides,
@@ -215,6 +216,35 @@ def cmd_recipe_show(args: argparse.Namespace) -> None:
             json_output=args.json,
             human_renderer=render_recipe,
         )
+
+
+def cmd_recipe_download(args: argparse.Namespace) -> None:
+    config = load_cli_config()
+    base_url = resolve_base_url(args, config)
+    with client(base_url) as http:
+        if args.recipe_id:
+            response = http.get(f"/api/v1/recipes/{args.recipe_id}")
+            response.raise_for_status()
+            recipe = response.json()
+        else:
+            workspace = resolve_workspace(args, config)
+            if not args.recipe:
+                raise ValueError("recipe download requires --recipe or --recipe-id")
+            recipe = find_recipe_by_name(http, workspace, args.recipe)
+
+    output_path = Path(args.output).expanduser() if args.output else Path(f"{recipe['name']}.yaml")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(dump_recipe_yaml(recipe), encoding="utf-8")
+    if args.json:
+        render_json(
+            {
+                "recipeId": recipe.get("id"),
+                "recipe": recipe.get("name"),
+                "path": str(output_path.resolve()),
+            }
+        )
+    else:
+        print(f"Downloaded recipe to {output_path.resolve()}")
 
 
 def cmd_recipe_publish(args: argparse.Namespace) -> None:

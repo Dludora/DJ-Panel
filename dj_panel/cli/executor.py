@@ -25,6 +25,7 @@ class CliExecutor:
             "recipe.import": commands.cmd_recipe_import,
             "recipe.list": commands.cmd_recipe_list,
             "recipe.show": commands.cmd_recipe_show,
+            "recipe.download": commands.cmd_recipe_download,
             "recipe.publish": commands.cmd_recipe_publish,
             "run.submit": commands.cmd_run_submit,
             "run.list": commands.cmd_run_list,

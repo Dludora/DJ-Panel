@@ -9,7 +9,9 @@ from dj_panel.cli.utils import normalize_base_url as _normalize_base_url
 from dj_panel.cli.utils import build_recipe_create_request as _build_recipe_create_request
 from dj_panel.cli.utils import DEFAULT_DJ_EXECUTION_SPEC
 from dj_panel.cli.utils import render_config as _render_config
+from dj_panel.cli.utils import render_recipe as _render_recipe
 from dj_panel.cli.utils import render_recipe_list as _render_recipe_list
+from dj_panel.cli.utils import dump_recipe_yaml as _dump_recipe_yaml
 
 __all__ = [
     'DEFAULT_DJ_COMMAND',
@@ -23,7 +25,9 @@ __all__ = [
     '_build_recipe_create_request',
     'DEFAULT_DJ_EXECUTION_SPEC',
     '_render_config',
+    '_render_recipe',
     '_render_recipe_list',
+    '_dump_recipe_yaml',
     'build_parser',
     'main',
 ]
